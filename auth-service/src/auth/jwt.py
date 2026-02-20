@@ -1,8 +1,8 @@
 from async_fastapi_jwt_auth import AuthJWT
 from pydantic import BaseModel
 
-from core.config import settings
-from db.redis_db import is_access_token_revoked, is_refresh_token_valid
+from src.core.config import settings
+from src.db.redis_db import is_access_token_revoked, is_refresh_token_valid
 
 
 class AuthJWTSettings(BaseModel):

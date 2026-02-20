@@ -3,11 +3,11 @@ from fastapi import Request, HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db.redis_db import store_refresh_token, revoke_refresh_token, revoke_access_token
-from db.repository import UserRepository, LoginHistoryRepository
-from core.security import verify_password
-from models.entity import UserRole
-from schemas.token import TokenResponse
+from src.db.redis_db import store_refresh_token, revoke_refresh_token, revoke_access_token
+from src.db.repository import UserRepository, LoginHistoryRepository
+from src.core.security import verify_password
+from src.models.entity import UserRole
+from src.schemas.token import TokenResponse
 from async_fastapi_jwt_auth import AuthJWT
 
 

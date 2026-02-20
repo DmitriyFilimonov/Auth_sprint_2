@@ -7,12 +7,12 @@ from fastapi.encoders import jsonable_encoder
 from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db.postgres import get_session
-from db.repository import UserRepository
-from schemas.entity import UserCreate, UserInDB, UserChangePassword, UserChangeLogin, LoginSchema, RoleCreate, RoleInDB, RoleUpdate
-from schemas.token import TokenResponse
-from services.auth import AuthService
-from models.entity import User, Role
+from src.db.postgres import get_session
+from src.db.repository import UserRepository
+from src.schemas.entity import UserCreate, UserInDB, UserChangePassword, UserChangeLogin, LoginSchema, RoleCreate, RoleInDB, RoleUpdate
+from src.schemas.token import TokenResponse
+from src.services.auth import AuthService
+from src.models.entity import User, Role
 
 
 router = APIRouter(prefix="/users")

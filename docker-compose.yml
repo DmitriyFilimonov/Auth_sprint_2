@@ -1,20 +1,6 @@
 version: '3.8'
 services:
 
-  movies-admin:
-    build:
-      context: ./movies_admin
-      dockerfile: Dockerfile
-    expose:
-      - "8000"
-    env_file:
-      - ./.env
-    depends_on:
-      theatre-db:
-        condition: service_healthy
-    volumes:
-      - static_volume:/opt/app/static/
-
   etl:
     build:
       context: ./etl_service
@@ -50,7 +36,6 @@ services:
     image: nginx:1.27.4
     volumes:
       - ./configs/nginx:/etc/nginx/conf.d:ro
-      - static_volume:/opt/app/static/
     depends_on:
       - fastapi
     ports:
@@ -66,7 +51,7 @@ services:
     env_file:
       - ./.env
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER}" ]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -82,7 +67,7 @@ services:
       xpack.security.enabled: "false"
       ES_JAVA_OPTS: "-Xms200m -Xmx200m"
     healthcheck:
-      test: ["CMD", "curl", "-s", "http://localhost:9200"]
+      test: [ "CMD", "curl", "-s", "http://localhost:9200" ]
       interval: 10s
       timeout: 10s
       retries: 15
@@ -96,7 +81,7 @@ services:
     expose:
       - "${REDIS_PORT}"
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 10s
       timeout: 10s
       retries: 15
@@ -105,4 +90,3 @@ volumes:
   pg-data:
   elastic-data:
   redis-data:
-  static_volume:

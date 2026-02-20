@@ -50,3 +50,4 @@ gen-clients: openapi
 		-g typescript-axios \
 		-o /local/clients/ts-axios \
 		--additional-properties=npmName=api-ts-client
+

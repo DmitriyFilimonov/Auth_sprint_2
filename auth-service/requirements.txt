@@ -11,3 +11,5 @@ orjson>=3.9.0
 async-fastapi-jwt-auth==0.6.6
 bcrypt==4.3.0
 passlib[bcrypt]==1.7.4
+alembic>=1.13.0
+psycopg[binary]==3.2.5
