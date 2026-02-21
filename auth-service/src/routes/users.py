@@ -170,3 +170,8 @@ async def delete_roles(user_id: uuid.UUID, db: SessionDep):
     await db.commit()
 
     return
+
+
+@router.get("/ping")
+async def health_check():
+    return "pong"

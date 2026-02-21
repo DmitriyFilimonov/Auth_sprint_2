@@ -25,6 +25,8 @@ services:
     env_file:
       - ./.env
     depends_on:
+      authapi:
+        condition: service_healthy
       elasticsearch:
         condition: service_healthy
       redis:
@@ -88,8 +90,6 @@ services:
     build:
       context: ./auth-service
       dockerfile: Dockerfile
-    # ports:
-    #   - "8000:8000"
     expose:
       - "8000"
     env_file:
@@ -102,13 +102,16 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python3", "-c", "from urllib import request; request.urlopen('http://localhost:8000/users/ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
   
   auth-db:
     image: postgres:17.4
     volumes:
       - pg-data-auth:/var/lib/postgresql/data
-    # ports:
-    #   - "5432:5432"
     env_file:
       - ./auth-service/.env
     restart: unless-stopped
