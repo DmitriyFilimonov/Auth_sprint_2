@@ -2,7 +2,7 @@ import re
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, field_validator, constr, Field
-from models.entity import UserRole
+from src.models.entity import UserRole
 
 
 class UserBase(BaseModel):

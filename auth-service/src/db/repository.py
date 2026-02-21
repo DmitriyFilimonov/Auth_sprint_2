@@ -4,8 +4,8 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from models.entity import User, History, UserRole, Role
-from core.security import get_password_hash, verify_password
+from src.models.entity import User, History, UserRole, Role
+from src.core.security import get_password_hash, verify_password
 
 
 class UserRepository:

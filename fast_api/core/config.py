@@ -1,7 +1,6 @@
 from logging import config as logging_config
 from pathlib import Path
 
-from pydantic import Field
 from pydantic_settings import BaseSettings
 
 from core.logger import LOGGING

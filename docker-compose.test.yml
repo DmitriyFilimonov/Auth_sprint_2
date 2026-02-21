@@ -11,13 +11,7 @@ services:
       - "8000"
     env_file:
       - ./.env.test
-    depends_on:
-      theatre-db:
-        condition: service_healthy
-      elasticsearch:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+    
 
   theatre-db:
     image: postgres:17.4
@@ -80,15 +74,60 @@ services:
     env_file:
       - ./.env.test
     depends_on:
-      theatre-db:
-        condition: service_healthy
-      elasticsearch:
+      - authapi
+
+  authapi:
+    build:
+      context: ./auth-service
+      dockerfile: Dockerfile
+    expose:
+      - "8000"
+    env_file:
+      - ./auth-service/.env
+    environment:
+      - POSTGRES_MIGRATIONS_HOST=auth-db 
+    restart: unless-stopped
+    depends_on:
+      auth-db:
         condition: service_healthy
       redis:
         condition: service_healthy
+  
+  auth-db:
+    image: postgres:17.4
+    volumes:
+      - pg-data-auth:/var/lib/postgresql/data
+    env_file:
+      - ./auth-service/.env
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+  
+  auth-redis:
+    image: redis:7.4.3
+    volumes:
+      - auth-redis-data:/data
+      - ./auth-service/src/configs/redis/redis.conf:/usr/local/etc/redis/redis.conf
+    command: redis-server /usr/local/etc/redis/redis.conf
+    env_file:
+      - ./auth-service/.env
+    expose:
+      - "${REDIS_PORT}"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 15
+
 
 volumes:
   pg-data:
   elastic-data:
   redis-data:
   static_volume:
+  pg-data-auth:
+  auth-redis-data:

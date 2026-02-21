@@ -3,6 +3,12 @@
 make run
 ```
 
+## Запуск БД авторизации
+```commandline
+cd auth-service
+make auth-db
+```
+
 ## Запуск тестов
 ```commandline
 docker-compose -f docker-compose.test.yml up --build

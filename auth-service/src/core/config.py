@@ -3,7 +3,7 @@ from pathlib import Path
 
 from pydantic_settings import BaseSettings
 
-from core.logger import LOGGING
+from src.core.logger import LOGGING
 
 # Применяем настройки логирования
 logging_config.dictConfig(LOGGING)
@@ -20,9 +20,14 @@ class Settings(BaseSettings):
 
     postgres_user: str = 'postgres'
     postgres_password: str = ""
-    postgres_host: str = '127.0.0.1'
+    postgres_host: str
+    # при локальной генерации миграций хост из сети docker недоступен
+    postgres_migrations_host: str
     postgres_port: int = 5432
     postgres_db: str = 'auth'
+
+    sync_driver: str = 'postgresql+psycopg'
+    async_driver: str = 'postgresql+asyncpg'
 
     # JWT
     SECRET_KEY: str = "your-secret-key-change-in-production"
