@@ -26,8 +26,8 @@ class Settings(BaseSettings):
     postgres_port: int = 5432
     postgres_db: str = 'auth'
 
-    sync_driver:str = 'postgresql+psycopg'
-    async_driver:str = 'postgresql+asyncpg'
+    sync_driver: str = 'postgresql+psycopg'
+    async_driver: str = 'postgresql+asyncpg'
 
     # JWT
     SECRET_KEY: str = "your-secret-key-change-in-production"
