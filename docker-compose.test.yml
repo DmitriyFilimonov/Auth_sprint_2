@@ -11,13 +11,7 @@ services:
       - "8000"
     env_file:
       - ./.env.test
-    depends_on:
-      theatre-db:
-        condition: service_healthy
-      elasticsearch:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+    
 
   theatre-db:
     image: postgres:17.4
@@ -79,13 +73,6 @@ services:
       - ./tests:/tests
     env_file:
       - ./.env.test
-    depends_on:
-      theatre-db:
-        condition: service_healthy
-      elasticsearch:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
 
 volumes:
   pg-data:
