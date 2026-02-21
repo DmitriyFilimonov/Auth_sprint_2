@@ -29,6 +29,24 @@ class FastAPISettings(BaseSettings):
         return f'http://{self.host}:{self.port}'
 
 
+class AuthAPISettings(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix='auth_')
+    host: str = ...
+    port: str = "8000"
+
+    def get_host(self) -> str:
+        return f'http://{self.host}:{self.port}'
+
+
+class AuthDBSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix='auth_db_')
+    host: str
+    port: str = "5432"
+
+    def get_host(self) -> str:
+        return f'{self.host}:{self.port}'
+
+
 @dataclass
 class ElasticSchemas:
     """Dataclass with index schemas for ElasticLoader."""
@@ -155,6 +173,9 @@ class TestSettings(BaseSettings):
     elastic_settings: ElasticSettings = ElasticSettings()
     redis_settings: RedisSettings = RedisSettings()
     fastapi_settings: FastAPISettings = FastAPISettings()
+
+    auth_settings: AuthAPISettings = AuthAPISettings()
+    auth_db_setting: AuthDBSettings = AuthDBSettings()
 
     elastic_mappings: ElasticSchemas = ElasticSchemas()
 

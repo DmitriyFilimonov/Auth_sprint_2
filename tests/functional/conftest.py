@@ -10,6 +10,10 @@ from redis.asyncio import Redis
 from .settings import test_settings
 
 
+from sqlalchemy import text
+from tests.functional.db.users import users_engine
+
+
 @pytest_asyncio.fixture(scope='session')
 def event_loop():
     """Фикстура для переопределения event_loop для использования scope session"""
@@ -172,4 +176,29 @@ async def make_get_request(aiohttp_session):
             body = await response.json()
             status = response.status
         return {"body": body, "status": status}
+    return inner
+
+
+@pytest_asyncio.fixture(name='make_auth_request')
+async def make_auth_request(aiohttp_session):
+    """Фикстура для выполнения запросов к сервису авторизации"""
+    async def inner(method: str, endpoint: str, request_body=None):
+        if request_body is None:
+            request_body = {}
+        url = test_settings.auth_settings.get_host() + '/users' + endpoint + "/"
+        http_method = getattr(aiohttp_session, method)
+        async with http_method(url, json=request_body) as response:
+            body = await response.json()
+            status = response.status
+        return {"body": body, "status": status}
+    return inner
+
+
+@pytest_asyncio.fixture(name="clear_auth_db_tables")
+async def clear_auth_db_tables():
+    async def inner():
+        async with users_engine.begin() as conn:
+            tables = "users, roles, history"
+            if tables:
+                await conn.execute(text(f"TRUNCATE {tables} RESTART IDENTITY CASCADE;"))
     return inner
