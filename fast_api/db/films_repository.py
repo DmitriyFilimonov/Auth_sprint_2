@@ -2,7 +2,7 @@ from postgres import BaseRepository
 
 import uuid
 from sqlalchemy import delete
-from models.film import FilmDB  # Ваша модель фильма
+from models.film import FilmDB
 
 
 class FilmsRepository(BaseRepository):
@@ -12,5 +12,4 @@ class FilmsRepository(BaseRepository):
         result = await self.session.execute(query)
         await self.session.commit()
 
-        # rowcount покажет, была ли удалена запись
         return result.rowcount > 0
