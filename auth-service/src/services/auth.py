@@ -161,7 +161,7 @@ class AuthService:
         except Exception:
             pass
 
-    async def login_history(
+    async def get_login_history(
         self,
         limit: int,
         offset: int

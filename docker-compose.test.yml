@@ -73,7 +73,8 @@ services:
       - ./tests:/tests
     env_file:
       - ./.env.test
-    depends_on:
+    depends_on:  
+      - theatre-db
       - authapi
 
   authapi:
