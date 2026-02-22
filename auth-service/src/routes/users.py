@@ -58,7 +58,7 @@ async def login(payload: LoginSchema, request: Request, session: AsyncSession = 
 
 
 @router.post("/refresh", response_model=TokenResponse)
-async def refresh(
+async def refresh_token(
         session: AsyncSession = Depends(get_session),
         Authorize: AuthJWT = Depends()
 ):
@@ -99,7 +99,7 @@ async def change_password(
 
 
 @router.get("/login-history")
-async def login_history(
+async def get_login_history(
     limit: int = 50,
     offset: int = 0,
     Authorize: AuthJWT = Depends(),
@@ -107,7 +107,7 @@ async def login_history(
 ):
     """Получение пользователем своей истории входов в аккаунт."""
     auth_service = AuthService(session, Authorize)
-    return await auth_service.login_history(limit, offset)
+    return await auth_service.get_login_history(limit, offset)
 
 
 @router.post("/roles", response_model=RoleInDB, status_code=status.HTTP_201_CREATED)
@@ -170,6 +170,18 @@ async def delete_roles(user_id: uuid.UUID, db: SessionDep):
     await db.commit()
 
     return
+
+
+@router.get("/authenticate_token")
+async def authenticate_token(Authorize: AuthJWT = Depends()):
+    await Authorize.jwt_required()
+
+    payload = await Authorize.get_raw_jwt()
+
+    return {
+        "user_id": payload.get("user_id"),
+        "role": payload.get("role")
+    }
 
 
 @router.get("/ping")

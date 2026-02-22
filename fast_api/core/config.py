@@ -20,5 +20,9 @@ class Settings(BaseSettings):
     elastic_port: int = 9200
     elastic_schema: str = 'http://'
 
+    auth_service_host: str
+    auth_service_port: int
+    auth_service_authenticate_token_endpoint: str
+
 
 settings = Settings()

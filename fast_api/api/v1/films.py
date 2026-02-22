@@ -3,6 +3,8 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query
 
+
+from services.auth import check_admin_role
 from services.film import FilmService, get_film_service
 from .models import FilmFullResponse, FilmShortResponse, FilmBaseResponse, Genre
 
@@ -133,3 +135,11 @@ async def search_films(
         ))
 
     return films
+
+
+@router.delete('/{film_id}')
+async def delete_film(
+    film_id: str,
+    user: dict = Depends(check_admin_role)
+):
+    return user

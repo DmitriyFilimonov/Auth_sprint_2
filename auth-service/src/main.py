@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
 
-from async_fastapi_jwt_auth.exceptions import RevokedTokenError, MissingTokenError, RefreshTokenRequired, \
+from async_fastapi_jwt_auth.exceptions import AuthJWTException, RevokedTokenError, MissingTokenError, RefreshTokenRequired, \
     AccessTokenRequired
 from fastapi import FastAPI, Request
 from fastapi.openapi.utils import get_openapi
@@ -119,4 +119,13 @@ async def access_token_required_exception_handler(
     return JSONResponse(
         status_code=401,
         content={"detail": exc.message},
+    )
+
+
+# детализация ошибки, не предусмотренной выше
+@app.exception_handler(AuthJWTException)
+def authjwt_exception_handler(request: Request, exc: AuthJWTException):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.message}
     )
