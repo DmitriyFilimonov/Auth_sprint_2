@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query
 
 
 from db.postgres import get_session
-from fast_api.db.films_repository import FilmsRepository
+from db.films_repository import FilmsRepository
 from services.auth import check_admin_role
 from services.film import FilmService, get_film_service
 from .models import FilmFullResponse, FilmShortResponse, FilmBaseResponse, Genre

@@ -1,4 +1,4 @@
-from postgres import BaseRepository
+from db.postgres import BaseRepository
 
 import uuid
 from sqlalchemy import delete
