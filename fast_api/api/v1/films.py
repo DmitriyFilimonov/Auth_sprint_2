@@ -4,9 +4,13 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Path, Query
 
 
+from db.postgres import get_session
+from fast_api.db.films_repository import FilmsRepository
 from services.auth import check_admin_role
 from services.film import FilmService, get_film_service
 from .models import FilmFullResponse, FilmShortResponse, FilmBaseResponse, Genre
+from sqlalchemy.ext.asyncio import AsyncSession
+
 
 # Объект router, в котором регистрируем обработчики
 router = APIRouter()
@@ -140,6 +144,14 @@ async def search_films(
 @router.delete('/{film_id}')
 async def delete_film(
     film_id: str,
-    user: dict = Depends(check_admin_role)
+    user: dict = Depends(check_admin_role),
+    session: AsyncSession = Depends(get_session)
 ):
+    film_repo = FilmsRepository(session)
+
+    deleted = await film_repo.delete_single(film_id)
+
+    if not deleted:
+        raise HTTPException(404, detail="Not found")
+
     return user
