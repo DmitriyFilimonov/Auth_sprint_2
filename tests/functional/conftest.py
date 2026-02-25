@@ -182,12 +182,12 @@ async def make_get_request(aiohttp_session):
 @pytest_asyncio.fixture(name='make_auth_request')
 async def make_auth_request(aiohttp_session):
     """Фикстура для выполнения запросов к сервису авторизации"""
-    async def inner(method: str, endpoint: str, request_body=None):
+    async def inner(method: str, endpoint: str, request_body=None, headers=None):
         if request_body is None:
             request_body = {}
         url = test_settings.auth_settings.get_host() + '/users' + endpoint + "/"
         http_method = getattr(aiohttp_session, method)
-        async with http_method(url, json=request_body) as response:
+        async with http_method(url, json=request_body, headers=headers) as response:
             body = await response.json()
             status = response.status
         return {"body": body, "status": status}

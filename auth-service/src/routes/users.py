@@ -12,7 +12,7 @@ from src.db.repository import UserRepository
 from src.schemas.entity import UserCreate, UserInDB, UserChangePassword, UserChangeLogin, LoginSchema, RoleCreate, RoleInDB, RoleUpdate
 from src.schemas.token import TokenResponse
 from src.services.auth import AuthService
-from src.models.entity import User, Role
+from src.models.entity import User, Role, UserRole
 
 
 router = APIRouter(prefix="/users")
@@ -131,10 +131,19 @@ async def set_roles(role_create: RoleCreate, db: SessionDep) -> RoleInDB:
 
 
 @router.get("/roles", response_model=list[RoleInDB])
-async def get_roles(db: SessionDep) -> list[RoleInDB]:
-    query = select(Role)
-    result = await db.execute(query)
-    return result.scalars().all()
+async def get_roles(db: SessionDep, Authorize: AuthJWT = Depends(),) -> list[RoleInDB]:
+    await Authorize.jwt_required()
+
+    payload = await Authorize.get_raw_jwt()
+
+    if payload.get("role") == UserRole.SUPERUSER:
+        query = select(Role)
+
+        result = await db.execute(query)
+
+        return result.scalars().all()
+
+    raise HTTPException(403)
 
 
 @router.patch("/roles/{user_id}", response_model=RoleInDB, status_code=status.HTTP_200_OK)
