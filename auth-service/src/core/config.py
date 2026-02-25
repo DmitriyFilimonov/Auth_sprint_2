@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     postgres_migrations_host: str
     postgres_port: int = 5432
     postgres_db: str = 'auth'
+    superuser_password: str
 
     sync_driver: str = 'postgresql+psycopg'
     async_driver: str = 'postgresql+asyncpg'

@@ -25,7 +25,7 @@ login_payload = LoginPayload(login=user.login, password=user.password)
     ],
 )
 @pytest.mark.asyncio
-async def test_roles_unauth(
+async def test_roles_forbidden(
     make_auth_request, expected_answer: dict, clear_auth_db_tables
 ):
     await clear_auth_db_tables()
