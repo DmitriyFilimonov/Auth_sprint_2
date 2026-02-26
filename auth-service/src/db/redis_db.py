@@ -37,8 +37,7 @@ async def revoke_all_refresh_tokens(user_id: str):
     """
     Logout from all devices
     """
-    keys = await redis.keys("refresh:*")
-    for key in keys:
-        uid = await redis.get(key)
-        if uid == user_id:
+    async for key in redis.scan_iter("refresh:*"):
+        uuid = await redis.get(key)
+        if uuid == user_id:
             await redis.delete(key)
