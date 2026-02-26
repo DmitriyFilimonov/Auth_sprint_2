@@ -7,8 +7,6 @@ from src.models.entity import UserRole
 
 class PasswordValidator:
     def validate_password(cls, v):
-        if len(v) < 8:
-            raise ValueError("Password must be at least 8 characters long")
         if not re.search(r"[A-Z]", v):
             raise ValueError("Password must contain at least one uppercase letter")
         if not re.search(r"[a-z]", v):
@@ -48,7 +46,6 @@ class UserCreate(UserBase):
 
 class UserInDB(UserBase):
     id: UUID
-
     model_config = ConfigDict(from_attributes=True)
 
 
