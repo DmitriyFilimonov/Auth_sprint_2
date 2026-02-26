@@ -5,3 +5,5 @@ pytest==8.3.5
 pytest-asyncio==0.26.0
 sqlalchemy[asyncio]>=2.0.43
 asyncpg>=0.30.0
+bcrypt==4.3.0
+passlib[bcrypt]==1.7.4

@@ -43,6 +43,8 @@ class AuthDBSettings(BaseSettings):
     host: str
     port: str = "5432"
 
+    superuser_password: str
+
     def get_host(self) -> str:
         return f'{self.host}:{self.port}'
 
