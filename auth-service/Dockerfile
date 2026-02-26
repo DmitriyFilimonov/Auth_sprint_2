@@ -13,9 +13,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends gcc \
     && rm -rf /var/lib/apt/lists/*
 
 COPY . .
-COPY migrate.sh /migrate.sh
-RUN chmod +x /migrate.sh
+COPY prepare_service.sh /prepare_service.sh
+RUN chmod +x /prepare_service.sh
 
-ENTRYPOINT ["/migrate.sh"]
+ENTRYPOINT ["/prepare_service.sh"]
 
 CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]

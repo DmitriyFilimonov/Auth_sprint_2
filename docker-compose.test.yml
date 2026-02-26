@@ -11,7 +11,6 @@ services:
       - "8000"
     env_file:
       - ./.env.test
-    
 
   theatre-db:
     image: postgres:17.4
@@ -23,7 +22,7 @@ services:
     env_file:
       - ./.env.test
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER}" ]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -41,7 +40,7 @@ services:
       xpack.security.enabled: "false"
       ES_JAVA_OPTS: "-Xms200m -Xmx200m"
     healthcheck:
-      test: ["CMD", "curl", "-s", "http://localhost:9200"]
+      test: [ "CMD", "curl", "-s", "http://localhost:9200" ]
       interval: 10s
       timeout: 10s
       retries: 15
@@ -57,23 +56,19 @@ services:
     expose:
       - "${REDIS_PORT}"
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 10s
       timeout: 10s
       retries: 15
 
   tests:
     image: fastapi-image
-    entrypoint: sh -c "
-      pip install -r /tests/functional/requirements.txt
-      && python /tests/functional/utils/wait_for_es.py
-      && python /tests/functional/utils/wait_for_redis.py
-      && pytest /tests/functional"
+    entrypoint: sh -c " pip install -r /tests/functional/requirements.txt && python /tests/functional/utils/wait_for_es.py && python /tests/functional/utils/wait_for_redis.py && pytest /tests/functional"
     volumes:
       - ./tests:/tests
     env_file:
       - ./.env.test
-    depends_on:  
+    depends_on:
       - theatre-db
       - authapi
 
@@ -83,17 +78,19 @@ services:
       dockerfile: Dockerfile
     expose:
       - "8000"
+    ports: 
+      - "8001:8000"
     env_file:
       - ./auth-service/.env
     environment:
-      - POSTGRES_MIGRATIONS_HOST=auth-db 
+      - POSTGRES_MIGRATIONS_HOST=auth-db
     restart: unless-stopped
     depends_on:
       auth-db:
         condition: service_healthy
       redis:
         condition: service_healthy
-  
+
   auth-db:
     image: postgres:17.4
     volumes:
@@ -102,11 +99,11 @@ services:
       - ./auth-service/.env
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER}" ]
       interval: 5s
       timeout: 5s
       retries: 5
-  
+
   auth-redis:
     image: redis:7.4.3
     volumes:
@@ -119,11 +116,10 @@ services:
       - "${REDIS_PORT}"
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 10s
       timeout: 10s
       retries: 15
-
 
 volumes:
   pg-data:

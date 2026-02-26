@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 import time
 
-import elasticsearch
 import psycopg
 
 from core.backoff import backoff

@@ -10,7 +10,8 @@ from psycopg.rows import dict_row
 
 from core.backoff import backoff
 
-#вынесем создание коннекта отдельно
+
+# вынесем создание коннекта отдельно
 class PostgresConnectionFactory:
     """Create PostgresSQL connection with backoff."""
     def __init__(self, dsn: dict):
