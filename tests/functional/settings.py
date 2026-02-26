@@ -172,6 +172,7 @@ class ElasticSchemas:
 
 
 class TestSettings(BaseSettings):
+    debug: bool = False
     elastic_settings: ElasticSettings = ElasticSettings()
     redis_settings: RedisSettings = RedisSettings()
     fastapi_settings: FastAPISettings = FastAPISettings()
