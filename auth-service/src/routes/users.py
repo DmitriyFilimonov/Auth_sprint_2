@@ -111,23 +111,30 @@ async def get_login_history(
 
 
 @router.post("/roles", response_model=RoleInDB, status_code=status.HTTP_201_CREATED)
-async def set_roles(role_create: RoleCreate, db: SessionDep) -> RoleInDB:
-    user_id = role_create.user_id
+async def set_roles(role_create: RoleCreate, db: SessionDep, Authorize: AuthJWT = Depends(),) -> RoleInDB:
+    await Authorize.jwt_required()
 
-    user = await db.execute(select(User.id).where(User.id == user_id))
-    if not user.scalar_one_or_none():
-        raise HTTPException(404, "Пользователь не найден")
+    payload = await Authorize.get_raw_jwt()
 
-    result = await db.execute(select(Role).where(Role.user_id == user_id))
-    if result.scalar_one_or_none():
-        raise HTTPException(409, "У пользователя уже есть роль")
+    if payload.get("role") == UserRole.SUPERUSER:
+        user_id = role_create.user_id
 
-    role_dto = jsonable_encoder(role_create)
-    role = Role(**role_dto)
-    db.add(role)
-    await db.commit()
-    await db.refresh(role)
-    return role
+        user = await db.execute(select(User.id).where(User.id == user_id))
+        if not user.scalar_one_or_none():
+            raise HTTPException(404, "Пользователь не найден")
+
+        result = await db.execute(select(Role).where(Role.user_id == user_id))
+        if result.scalar_one_or_none():
+            raise HTTPException(409, "У пользователя уже есть роль")
+
+        role_dto = jsonable_encoder(role_create)
+        role = Role(**role_dto)
+        db.add(role)
+        await db.commit()
+        await db.refresh(role)
+        return role
+
+    raise HTTPException(403)
 
 
 @router.get("/roles", response_model=list[RoleInDB])
@@ -147,38 +154,52 @@ async def get_roles(db: SessionDep, Authorize: AuthJWT = Depends(),) -> list[Rol
 
 
 @router.patch("/roles/{user_id}", response_model=RoleInDB, status_code=status.HTTP_200_OK)
-async def update_roles(user_id: uuid.UUID, role_update: RoleUpdate, db: SessionDep) -> RoleInDB:
-    user = (await db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
-    if not user:
-        raise HTTPException(404, "Пользователь не найден")
+async def update_roles(user_id: uuid.UUID, role_update: RoleUpdate, db: SessionDep, Authorize: AuthJWT = Depends(),) -> RoleInDB:
+    await Authorize.jwt_required()
 
-    result = await db.execute(select(Role).where(Role.user_id == user_id))
-    role = result.scalars().first()
-    if not role:
-        raise HTTPException(404, "Роль не найдена")
+    payload = await Authorize.get_raw_jwt()
 
-    role.role = role_update.role
+    if payload.get("role") == UserRole.SUPERUSER:
+        user = (await db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
+        if not user:
+            raise HTTPException(404, "Пользователь не найден")
 
-    await db.commit()
-    await db.refresh(role)
-    return role
+        result = await db.execute(select(Role).where(Role.user_id == user_id))
+        role = result.scalars().first()
+        if not role:
+            raise HTTPException(404, "Роль не найдена")
+
+        role.role = role_update.role
+
+        await db.commit()
+        await db.refresh(role)
+        return role
+    
+    raise HTTPException(403)
 
 
 @router.delete("/roles/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_roles(user_id: uuid.UUID, db: SessionDep):
-    user = await db.execute(select(User.id).where(User.id == user_id))
-    if not user.scalar_one_or_none():
-        raise HTTPException(404, "Пользователь не найден")
+async def delete_roles(user_id: uuid.UUID, db: SessionDep, Authorize: AuthJWT = Depends(),):
+    await Authorize.jwt_required()
 
-    result = await db.execute(select(Role).where(Role.user_id == user_id))
-    role = result.scalar_one_or_none()
-    if not role:
-        raise HTTPException(404, "У пользователя нет роли")
+    payload = await Authorize.get_raw_jwt()
 
-    await db.execute(delete(Role).where(Role.user_id == user_id))
-    await db.commit()
+    if payload.get("role") == UserRole.SUPERUSER:
+        user = await db.execute(select(User.id).where(User.id == user_id))
+        if not user.scalar_one_or_none():
+            raise HTTPException(404, "Пользователь не найден")
 
-    return
+        result = await db.execute(select(Role).where(Role.user_id == user_id))
+        role = result.scalar_one_or_none()
+        if not role:
+            raise HTTPException(404, "У пользователя нет роли")
+
+        await db.execute(delete(Role).where(Role.user_id == user_id))
+        await db.commit()
+
+        return
+    
+    raise HTTPException(403)
 
 
 @router.get("/authenticate_token")
