@@ -5,7 +5,6 @@ from datetime import datetime, timezone
 from sqlalchemy import String, ForeignKey, DateTime, Enum as SQLEnum
 from sqlalchemy.orm import relationship, mapped_column, Mapped
 from sqlalchemy.dialects.postgresql import UUID
-from werkzeug.security import check_password_hash
 
 from src.db.postgres import Base
 
@@ -23,9 +22,6 @@ class User(Base):
 
     roles: Mapped[list["Role"]] = relationship(back_populates="users", passive_deletes=True, cascade="all, delete-orphan")
     history: Mapped[list["History"]] = relationship(back_populates="users", passive_deletes=True, cascade="all, delete-orphan")
-
-    def check_password(self, password: str) -> bool:
-        return check_password_hash(self.password, password)
 
     def __repr__(self) -> str:
         return f'<User {self.login}>'
