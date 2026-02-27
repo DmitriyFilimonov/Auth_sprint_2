@@ -8,8 +8,9 @@ from src.db.repository import UserRepository, LoginHistoryRepository
 from src.core.security import verify_password
 from src.models.entity import UserRole
 from src.schemas.token import TokenResponse
-from async_fastapi_jwt_auth import AuthJWT
+from src.core.logger import logger
 
+from async_fastapi_jwt_auth import AuthJWT
 
 class AuthService:
     def __init__(self, db: AsyncSession, auth: AuthJWT):
@@ -96,8 +97,9 @@ class AuthService:
             access_exp = user_claims.get("access_exp")
             if access_jti and access_exp:
                 await revoke_access_token(access_jti, access_exp)
-        except Exception:
-            pass
+
+        except Exception as e:
+            logger.warning("Failed to revoke token: %s", e)
 
         # Получаем данные из текущего токена
         current_user = await self.auth.get_jwt_subject()
@@ -158,8 +160,9 @@ class AuthService:
             await self.auth.jwt_refresh_token_required()
             refresh_raw = await self.auth.get_raw_jwt()
             await revoke_refresh_token(refresh_raw["jti"])
-        except Exception:
-            pass
+
+        except Exception as e:
+            logger.warning("Failed to revoke token: %s", e)
 
     async def get_login_history(
         self,
