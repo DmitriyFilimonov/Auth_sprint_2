@@ -1,12 +1,7 @@
 import logging
 import sys
 
-from src.core.config import settings
-
-if settings.debug:
-    log_level = logging.DEBUG
-else:
-    log_level = logging.INFO
+log_level = logging.DEBUG
 
 # Set logging level for 3rd party libraries
 logging.getLogger('filelock').setLevel(logging.ERROR)
