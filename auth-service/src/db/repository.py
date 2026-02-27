@@ -12,7 +12,7 @@ class UserRepository:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def get_user_by_id(self, user_id: int) -> User | None:
+    async def get_user_by_id(self, user_id: uuid.UUID) -> User | None:
         """Get user by ID"""
         result = await self.session.execute(
             select(User).where(User.id == user_id)
@@ -64,7 +64,7 @@ class UserRepository:
         await self.session.refresh(user)
         return user
 
-    async def update_user_password(self, user_id: int, new_password: str) -> bool:
+    async def update_user_password(self, user_id: uuid.UUID, new_password: str) -> bool:
         """Update user password"""
         hashed_password = get_password_hash(new_password)
         result = await self.session.execute(
@@ -75,7 +75,7 @@ class UserRepository:
         await self.session.commit()
         return result.rowcount > 0
 
-    async def update_user_login(self, user_id: int, new_login: str) -> bool:
+    async def update_user_login(self, user_id: uuid.UUID, new_login: str) -> bool:
         """Update user login"""
         result = await self.session.execute(
             update(User)
@@ -85,7 +85,7 @@ class UserRepository:
         await self.session.commit()
         return result.rowcount > 0
 
-    async def verify_user_password(self, user_id: int, password: str) -> bool:
+    async def verify_user_password(self, user_id: uuid.UUID, password: str) -> bool:
         """Verify user password"""
         user = await self.get_user_by_id(user_id)
         if not user:
@@ -116,7 +116,7 @@ class LoginHistoryRepository:
 
     async def get_user_login_history(
         self,
-        user_id: int,
+        user_id: uuid.UUID,
         limit: int = 50,
         offset: int = 0
     ) -> list[History]:
