@@ -22,6 +22,8 @@ services:
       - "8000:8000"
     expose:
       - "8000"
+    environment:
+      REQUEST_LIMIT_PER_SECOND: "20"
     env_file:
       - ./.env
     depends_on:

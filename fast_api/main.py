@@ -1,13 +1,14 @@
 from contextlib import asynccontextmanager
 
-from elasticsearch import AsyncElasticsearch
+from redis.asyncio import Redis
 from fastapi import FastAPI
 from fastapi.responses import ORJSONResponse
-from redis.asyncio import Redis
+from elasticsearch import AsyncElasticsearch
 
-from api.v1 import films, genres, persons
-from core.config import settings
 from db import elastic, redis
+from core.config import settings
+from api.v1 import films, genres, persons
+from services.middleware import RateLimitMiddleware
 
 
 @asynccontextmanager
@@ -35,9 +36,11 @@ app = FastAPI(
     # Можно сразу сделать небольшую оптимизацию сервиса
     # и заменить стандартный JSON-сериализатор на более шуструю версию, написанную на Rust
     default_response_class=ORJSONResponse,
-    lifespan=lifespan
+    lifespan=lifespan,
+
 )
 
+app.add_middleware(RateLimitMiddleware)
 
 # Подключаем роутер к серверу, указав префикс /v1/films
 # Теги указываем для удобства навигации по документации
