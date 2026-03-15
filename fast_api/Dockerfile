@@ -15,4 +15,4 @@ RUN apt-get update && apt-get install -y --no-install-recommends gcc \
 COPY . ./
 RUN chmod +x ./main.py
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips='*'"]
