@@ -19,8 +19,9 @@ from jwt.exceptions import ExpiredSignatureError
 from src.core.config import settings
 from src.db import redis_db as redis
 from src.db import postgres
+from src.services.middleware import RateLimitMiddleware
+import src.auth.jwt  # НЕ УДАЛЯТЬ # noqa\
 from src.routes import users, oauth_yandex
-import src.auth.jwt  # НЕ УДАЛЯТЬ # noqa
 
 
 @asynccontextmanager
@@ -73,6 +74,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.add_middleware(RateLimitMiddleware)
 
 app.openapi = custom_openapi
 

@@ -23,7 +23,7 @@ services:
     expose:
       - "8000"
     environment:
-      REQUEST_LIMIT_PER_SECOND: "20"
+      - REQUEST_LIMIT_PER_SECOND=20
     env_file:
       - ./.env
     depends_on:
@@ -146,11 +146,11 @@ services:
       - ./auth-service/.env
     restart: unless-stopped
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER}" ]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
       interval: 5s
       timeout: 5s
       retries: 5
-
+  
   auth-redis:
     image: redis:7.4.3
     volumes:
@@ -163,7 +163,7 @@ services:
       - "${REDIS_PORT}"
     restart: unless-stopped
     healthcheck:
-      test: [ "CMD", "redis-cli", "ping" ]
+      test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 10s
       retries: 15

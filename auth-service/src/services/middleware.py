@@ -1,12 +1,13 @@
 from fastapi import Request, HTTPException, status, Response
 from starlette.middleware.base import BaseHTTPMiddleware
-from db.redis import get_redis
-from core.rate_limiter import check_rate_limit
+
+from src.db.redis_db import get_redis
+from src.core.rate_limiter import check_rate_limit
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
-        if request.url.path.startswith("/api/"):
+        if request.url.path.startswith("/users/"):
             redis_client = await get_redis()
             is_allowed = await check_rate_limit(request, redis_client)
 
