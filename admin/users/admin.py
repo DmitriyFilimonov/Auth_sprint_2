@@ -1,7 +1,6 @@
 # users/admin.py
 
 from django.contrib import admin
-from django.conf import settings
 
 from users.models import LoginHistory
 
@@ -11,39 +10,30 @@ from clients.auth_api.auth_api_client.api.пользователи.get_login_his
 )
 
 from .admin_site import admin_site
-from .auth_service import _normalize_bearer_token
+from .auth_service import with_token_refresh
 from .querysets import LoginHistoryQuerySet
+
+
+@with_token_refresh
+def _login_history_api(request, client: AuthenticatedClient):
+    return sync_detailed(client=client)
 
 
 class LoginHistoryAdmin(admin.ModelAdmin):
     list_display = ("user_id", "user_agent", "created_at")
 
-    # Отключаем всё, что лезет в БД для подсчета и фильтрации
     show_full_result_count = False
     list_filter = ()
     search_fields = ()
     ordering = ()
 
     def get_queryset(self, request):
-        raw = request.session.get("access_token")
-        if not raw:
-            return LoginHistoryQuerySet([], model=LoginHistory)
-
-        client = AuthenticatedClient(
-            base_url=settings.AUTH_API_URL,
-            token=_normalize_bearer_token(raw),
-        )
-
         try:
-            response = sync_detailed(
-                client=client,
-                limit=10,
-                offset=0,
-            )
-
+            response = _login_history_api(request)
+            if response is None:
+                return LoginHistoryQuerySet([], model=LoginHistory)
             if response.status_code == 200 and response.parsed is not None:
                 return LoginHistoryQuerySet(response.parsed, model=LoginHistory)
-
         except Exception as e:
             print(f"login history get_query_set error: {e}", flush=True)
 
