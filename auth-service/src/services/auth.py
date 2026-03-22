@@ -12,6 +12,7 @@ from src.core.logger import logger
 
 from async_fastapi_jwt_auth import AuthJWT
 
+
 class AuthService:
     def __init__(self, db: AsyncSession, auth: AuthJWT):
         self.db = db

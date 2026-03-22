@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 import os
 from pathlib import Path
 
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -83,8 +84,8 @@ DATABASES = {
         "NAME": os.getenv("POSTGRES_DB"),
         "USER": os.getenv("POSTGRES_USER"),
         "PASSWORD": os.getenv("POSTGRES_PASSWORD"),
-        "HOST": "theatre-db",  # имя сервиса в docker-compose
-        "PORT": 5432,
+        "HOST": os.getenv("POSTGRES_HOST"),
+        "PORT": os.getenv("POSTGRES_PORT"),
     }
 }
 
@@ -94,6 +95,14 @@ AUTHENTICATION_BACKENDS = [
     "users.auth.CustomBackend",
 ]
 
+service = os.getenv("AUTH_SERVICE")
+port = os.getenv("AUTH_PORT")
+endpoint = os.getenv("AUTH_LOGIN_EDNPOINT")
+
+AUTH_API_URL = f"http://{service}:{port}"
+AUTH_API_LOGIN_URL = f"{AUTH_API_URL}/{endpoint}"
+
+ALGORITHM = os.getenv("ALGORITHM")
 
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators

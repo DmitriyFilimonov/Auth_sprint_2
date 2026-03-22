@@ -141,21 +141,36 @@ services:
       timeout: 10s
       retries: 15
 
+  admin-session-storage:
+    image: postgres:17.4
+    env_file:
+      - ./admin/.env
+    volumes:
+      - admin-session-storage:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U admin_user -d admin_session_storage" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   admin:
     build:
       context: ./admin
     expose:
       - "8000"
     env_file:
-      - .env
+      - ./admin/.env
     depends_on:
-      theatre-db:
+      admin-session-storage:
         condition: service_healthy
       authapi:
         condition: service_healthy
     restart: unless-stopped
     volumes:
       - admin-static:/app/static
+    command: >
+      sh -c "python manage.py migrate && 
+             python manage.py runserver 0.0.0.0:8000"
 
 volumes:
   pg-data:
@@ -164,3 +179,4 @@ volumes:
   pg-data-auth:
   auth-redis-data:
   admin-static:
+  admin-session-storage:

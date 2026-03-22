@@ -27,6 +27,7 @@ class User(AbstractBaseUser):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.EmailField(verbose_name="email address", max_length=255, unique=True)
     is_active = models.BooleanField(default=True)
+    is_staff = True
     is_admin = models.BooleanField(default=False)
     first_name = models.CharField(max_length=255)
     last_name = models.CharField(max_length=255)
@@ -45,3 +46,21 @@ class User(AbstractBaseUser):
 
     def has_module_perms(self, app_label):
         return True
+
+
+class LoginHistory(models.Model):
+    # Добавляем фиктивные поля, чтобы Django Admin знал, что отображать в колонках
+    # primary_key=True обязателен для работы ссылок в админке
+    id = models.CharField(max_length=255, primary_key=True)
+    user_id = models.CharField(max_length=255)
+    user_agent = models.CharField(max_length=500, null=True, blank=True)
+    created_at = models.DateTimeField()
+
+    class Meta:
+        managed = False  # Чтобы Django не создавал таблицу в БД
+        app_label = "users"
+        verbose_name = "Запись из истории входов"
+        verbose_name_plural = "История входов"
+
+    def __str__(self):
+        return f"{self.user_id} @ {self.created_at}"

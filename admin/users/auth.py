@@ -1,5 +1,5 @@
+from jwt import decode
 import http
-import json
 from enum import StrEnum, auto
 
 import requests
@@ -18,23 +18,32 @@ class Roles(StrEnum):
 class CustomBackend(BaseBackend):
     def authenticate(self, request, username=None, password=None):
         url = settings.AUTH_API_LOGIN_URL
-        payload = {"email": username, "password": password}
-        response = requests.post(url, data=json.dumps(payload))
+        payload = {"login": username, "password": password}
+        response = requests.post(url, json=payload)
         if response.status_code != http.HTTPStatus.OK:
             return None
 
         data = response.json()
 
+        access_token = data["access_token"]
+        request.session["access_token"] = access_token
+        request.session["refresh_token"] = data["refresh_token"]
+
+        decoded = decode(jwt=access_token, options={"verify_signature": False})
+
+        print(decoded)
+
         try:
-            user, created = User.objects.get_or_create(
-                id=data["id"],
+            user, _created = User.objects.get_or_create(
+                id=decoded["user_id"],
             )
-            user.email = data.get("email")
-            user.first_name = data.get("first_name")
-            user.last_name = data.get("last_name")
-            user.is_admin = data.get("role") == Roles.ADMIN
-            user.is_active = data.get("is_active")
+            user.email = "fake@mail.domain"
+            user.first_name = ""
+            user.last_name = ""
+            user.is_admin = decoded.get("role") == "superuser"
+            user.is_active = decoded.get("role") == "superuser"
             user.save()
+
         except Exception:
             return None
 
