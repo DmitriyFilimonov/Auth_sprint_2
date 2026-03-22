@@ -42,12 +42,14 @@ def with_token_refresh(fn):
 
         refreshed = refresh_session_tokens(request)
 
-        if refreshed:
+        if refreshed is True:
             client = AuthenticatedClient(
                 base_url=settings.AUTH_API_URL, token=request.session["access_token"]
             )
 
-            return fn(request, client)
+            response = fn(request, client)
+
+            return response
 
         return response
 
