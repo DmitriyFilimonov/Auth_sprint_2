@@ -1,4 +1,3 @@
-from functools import wraps
 from http import HTTPStatus
 
 from django.conf import settings
@@ -38,7 +37,7 @@ def with_token_refresh(fn):
         )
         response = fn(request, client)
 
-        if response.status_code == HTTPStatus.UNAUTHORIZED:
+        if response.status_code != HTTPStatus.UNAUTHORIZED:
             return response
 
         refreshed = refresh_session_tokens(request)

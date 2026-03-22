@@ -26,8 +26,9 @@ class CustomBackend(BaseBackend):
         data = response.json()
 
         access_token = data["access_token"]
+        refresh_token = data["refresh_token"]
         request.session["access_token"] = access_token
-        request.session["refresh_token"] = data["refresh_token"]
+        request.session["refresh_token"] = refresh_token
 
         decoded = decode(jwt=access_token, options={"verify_signature": False})
 
