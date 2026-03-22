@@ -123,18 +123,6 @@ async def access_token_required_exception_handler(
     )
 
 
-def _looks_like_access_token_expired(message: str | None) -> bool:
-    """PyJWT кладёт в текст именно 'Signature has expired' и т.п."""
-    if not message:
-        return False
-    m = message.lower()
-    return (
-        "signature has expired" in m
-        or "token is expired" in m
-        or "expired signature" in m
-    )
-
-
 @app.exception_handler(ExpiredSignatureError)
 async def expired_signature_handler(request: Request, exc: ExpiredSignatureError):
     """Явное истечение claim `exp` (PyJWT), не путать с прочими ошибками декодирования."""
@@ -147,16 +135,10 @@ async def expired_signature_handler(request: Request, exc: ExpiredSignatureError
 
 @app.exception_handler(JWTDecodeError)
 async def jwt_decode_error_handler(request: Request, exc: JWTDecodeError):
-    """Прочие ошибки разбора JWT (не только exp).
+    """Прочие ошибки разбора JWT (не только exp)."""
 
-    async-fastapi-jwt-auth задаёт у JWTDecodeError status_code=422, но это не
-    валидация query/body FastAPI. Часто библиотека оборачивает PyJWT и не
-    выбрасывает ExpiredSignatureError наружу — тогда смотрим текст сообщения.
-    """
-    if _looks_like_access_token_expired(exc.message):
-        detail = "Access token has expired"
-    else:
-        detail = exc.message
+    detail = exc.message
+
     return JSONResponse(
         status_code=401,
         content={"detail": detail},
