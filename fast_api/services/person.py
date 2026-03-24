@@ -54,10 +54,10 @@ class PersonService(SearchMixin, Service):
         return films
 
     async def search(
-            self,
-            query: str,
-            page: int,
-            size: int
+        self,
+        query: str,
+        page: int,
+        size: int,
     ) -> list[Person] | None:
         """Возвращает список найденных персон"""
         query = {
@@ -65,17 +65,17 @@ class PersonService(SearchMixin, Service):
                 "multi_match": {
                     "query": query,
                     "fields": ["full_name"],
-                    "fuzziness": "AUTO"
+                    "fuzziness": "AUTO",
                 }
             },
             "from": (page - 1) * size,
-            "size": size
+            "size": size,
         }
 
         try:
             doc = await self.database.search(
                 index="persons",
-                body=query
+                body=query,
             )
         except BadRequestError:
             return None
@@ -94,12 +94,12 @@ class PersonService(SearchMixin, Service):
     async def _get_person_from_database(self, person_id: str) -> Person | None:
         """Получение person по ID из базы данных + его фильмы и роли"""
         try:
-            doc = await self.database.get(index='persons', id=person_id)
+            doc = await self.database.get(index="persons", id=person_id)
         except NotFoundError:
             return None
 
         # Создаем объект персоны
-        person = Person(**doc['_source'])
+        person = Person(**doc["_source"])
         person.films = await self._get_film_by_person_id(person_id)
         return person
 
@@ -109,9 +109,24 @@ class PersonService(SearchMixin, Service):
             "query": {
                 "bool": {
                     "should": [
-                        {"nested": {"path": "actors", "query": {"term": {"actors.uuid": person_id}}}},
-                        {"nested": {"path": "writers", "query": {"term": {"writers.uuid": person_id}}}},
-                        {"nested": {"path": "directors", "query": {"term": {"directors.uuid": person_id}}}},
+                        {
+                            "nested": {
+                                "path": "actors",
+                                "query": {"term": {"actors.uuid": person_id}},
+                            }
+                        },
+                        {
+                            "nested": {
+                                "path": "writers",
+                                "query": {"term": {"writers.uuid": person_id}},
+                            }
+                        },
+                        {
+                            "nested": {
+                                "path": "directors",
+                                "query": {"term": {"directors.uuid": person_id}},
+                            }
+                        },
                     ]
                 }
             }
@@ -121,7 +136,7 @@ class PersonService(SearchMixin, Service):
             search_result = await self.database.search(
                 index="movies",
                 body=query,
-                size=1000
+                size=1000,
             )
         except (NotFoundError, BadRequestError):
             search_result = {"hits": {"hits": []}}
@@ -135,17 +150,24 @@ class PersonService(SearchMixin, Service):
             # Проверяем в каких ролях персона участвует
             if any(actor["uuid"] == person_id for actor in film_data.get("actors", [])):
                 film_roles.append("actor")
-            if any(writer["uuid"] == person_id for writer in film_data.get("writers", [])):
+            if any(
+                writer["uuid"] == person_id for writer in film_data.get("writers", [])
+            ):
                 film_roles.append("writer")
-            if any(director["uuid"] == person_id for director in film_data.get("directors", [])):
+            if any(
+                director["uuid"] == person_id
+                for director in film_data.get("directors", [])
+            ):
                 film_roles.append("director")
 
-            films.append(FilmShort(
-                uuid=film_data["uuid"],
-                title=film_data["title"],
-                imdb_rating=film_data.get("imdb_rating"),
-                roles=film_roles
-            ))
+            films.append(
+                FilmShort(
+                    uuid=film_data["uuid"],
+                    title=film_data["title"],
+                    imdb_rating=film_data.get("imdb_rating"),
+                    roles=film_roles,
+                )
+            )
 
         return films
 
@@ -170,18 +192,23 @@ class PersonService(SearchMixin, Service):
 
     async def _put_person_to_cache(self, person: Person):
         """Сохранение person в кэш"""
-        await self.cache.set(f"person_{person.uuid}", person.json(), ex=PERSON_CACHE_EXPIRE_IN_SECONDS)
+        await self.cache.set(
+            f"person_{person.uuid}", person.json(), ex=PERSON_CACHE_EXPIRE_IN_SECONDS
+        )
 
     async def _put_films_person_to_cache(self, person_id: str, films: list[FilmShort]):
         """Сохранение person films в кэш"""
-        films_json = json.dumps([film.dict() for film in films])
-        await self.cache.set(f"films_person_{person_id}", films_json, ex=PERSON_CACHE_EXPIRE_IN_SECONDS)
+        films_json = json.dumps([film.dict() for film in films], sort_keys=True)
+
+        await self.cache.set(
+            f"films_person_{person_id}", films_json, ex=PERSON_CACHE_EXPIRE_IN_SECONDS
+        )
 
 
 @lru_cache()
 def get_person_service(
-        cache: Redis = Depends(get_redis),
-        database: AsyncElasticsearch = Depends(get_elastic),
+    cache: Redis = Depends(get_redis),
+    database: AsyncElasticsearch = Depends(get_elastic),
 ) -> PersonService:
     """Провайдер PersonService"""
     return PersonService(cache, database)

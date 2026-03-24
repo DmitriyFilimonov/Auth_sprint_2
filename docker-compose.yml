@@ -40,7 +40,12 @@ services:
       - ./configs/nginx:/etc/nginx/conf.d:ro
       - admin-static:/admin-static
     depends_on:
-      - fastapi
+      fastapi:
+        condition: service_started
+      admin:
+        condition: service_started
+      authapi:
+        condition: service_started
     ports:
       - "80:80"
 
@@ -165,6 +170,8 @@ services:
         condition: service_healthy
       authapi:
         condition: service_healthy
+      fastapi:
+        condition: service_started
     restart: unless-stopped
     volumes:
       - admin-static:/app/static

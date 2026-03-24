@@ -104,6 +104,10 @@ AUTH_API_LOGIN_URL = f"{AUTH_API_URL}/{endpoint}"
 
 ALGORITHM = os.getenv("ALGORITHM")
 
+fastapi_service = os.getenv("FASTAPI_SERVICE", "fastapi")
+fastapi_port = os.getenv("FASTAPI_PORT", "8000")
+FASTAPI_URL = f"http://{fastapi_service}:{fastapi_port}"
+
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
 

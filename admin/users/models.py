@@ -64,3 +64,21 @@ class LoginHistory(models.Model):
 
     def __str__(self):
         return f"{self.user_id} @ {self.created_at}"
+
+
+class FilmListing(models.Model):
+    """Прокси для отображения каталога из FastAPI; таблица в БД не используется."""
+
+    uuid = models.CharField(max_length=36, primary_key=True)
+    title = models.CharField(max_length=500)
+    imdb_rating = models.FloatField(null=True, blank=True)
+    genres_display = models.CharField(max_length=2000, blank=True)
+
+    class Meta:
+        managed = False
+        app_label = "users"
+        verbose_name = "Фильм"
+        verbose_name_plural = "Фильмы"
+
+    def __str__(self):
+        return self.title

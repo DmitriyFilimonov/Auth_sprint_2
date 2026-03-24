@@ -40,9 +40,9 @@ class GenreService(GetMixin, Service):
         return genre
 
     async def get(
-            self,
-            page: int,
-            size: int
+        self,
+        page: int,
+        size: int,
     ) -> list[Genre] | None:
         """
         Возвращает список жанров по заданным критериям.
@@ -54,20 +54,20 @@ class GenreService(GetMixin, Service):
         return await self._get_genre_by_filters(page, size)
 
     async def search(
-            self,
-            page: int,
-            size: int
+        self,
+        page: int,
+        size: int,
     ) -> list[Genre] | None:
         """Возвращает список найденных жанров"""
         query = {
             "from": (page - 1) * size,
-            "size": size
+            "size": size,
         }
 
         try:
             doc = await self.database.search(
                 index="genres",
-                body=query
+                body=query,
             )
         except (BadRequestError, NotFoundError):
             return None
@@ -77,7 +77,7 @@ class GenreService(GetMixin, Service):
     async def _get_genre_by_filters(
         self,
         page: int = 1,
-        size: int = 50
+        size: int = 50,
     ) -> list[Genre] | None:
         """Поиск жанров по критериям"""
 
@@ -95,29 +95,27 @@ class GenreService(GetMixin, Service):
         return genres
 
     async def _get_genres_from_database(
-            self,
-            page: int,
-            size: int
+        self,
+        page: int,
+        size: int,
     ) -> list[Genre] | None:
         """Получение жанров из базы данных по заданным критериям"""
 
         query = {
             "query": {
-                "bool": {
-                    "must": []
-                }
+                "bool": {"must": []},
             },
             "sort": [
-                {"name": {"order": "asc"}}
+                {"name": {"order": "asc"}},
             ],
             "from": (page - 1) * size,
-            "size": size
+            "size": size,
         }
 
         try:
             doc = await self.database.search(
                 index="genres",
-                body=query
+                body=query,
             )
         except (BadRequestError, NotFoundError):
             return None
@@ -127,10 +125,10 @@ class GenreService(GetMixin, Service):
     async def _get_genre_from_database(self, genre_id: str) -> Genre | None:
         """Получение жанра по ID из базы данных"""
         try:
-            doc = await self.database.get(index='genres', id=genre_id)
+            doc = await self.database.get(index="genres", id=genre_id)
         except NotFoundError:
             return None
-        return Genre(**doc['_source'])
+        return Genre(**doc["_source"])
 
     async def _genre_from_cache(self, genre_id: str) -> Genre | None:
         """Поиск жанра по ID в кэше"""
@@ -143,7 +141,9 @@ class GenreService(GetMixin, Service):
 
     async def _put_genre_to_cache(self, genre: Genre):
         """Сохранение жанра в кэш"""
-        await self.cache.set(f"genre_{genre.uuid}", genre.json(), ex=GENRE_CACHE_EXPIRE_IN_SECONDS)
+        await self.cache.set(
+            f"genre_{genre.uuid}", genre.json(), ex=GENRE_CACHE_EXPIRE_IN_SECONDS
+        )
 
     async def _get_genres_cache_key(self, page: int, size: int) -> str:
         """Генерация ключа кэша"""
@@ -160,15 +160,15 @@ class GenreService(GetMixin, Service):
         """Сохранение жанров в кэш"""
         await self.cache.set(
             cache_key,
-            json.dumps([genre.dict() for genre in genres]),
-            ex=GENRE_CACHE_EXPIRE_IN_SECONDS
+            json.dumps([genre.dict() for genre in genres], sort_keys=True),
+            ex=GENRE_CACHE_EXPIRE_IN_SECONDS,
         )
 
 
 @lru_cache()
 def get_genre_service(
-        cache: Redis = Depends(get_redis),
-        database: AsyncElasticsearch = Depends(get_elastic),
+    cache: Redis = Depends(get_redis),
+    database: AsyncElasticsearch = Depends(get_elastic),
 ) -> GenreService:
     """Провайдер GenreService"""
     return GenreService(cache, database)
