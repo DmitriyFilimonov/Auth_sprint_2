@@ -7,6 +7,7 @@ from .person import Person
 class Film(BaseDocument):
     """Модель фильмов"""
     title: str
+    is_deleted: bool = False
     imdb_rating: float | None = None
     description: str | None = None
     genres: list[Genre] | None = None

@@ -5,7 +5,6 @@ import aiohttp
 from elasticsearch import AsyncElasticsearch
 import pytest_asyncio
 from elasticsearch.helpers import async_bulk
-from redis.asyncio import Redis
 
 from tests.functional.utils.security import get_password_hash
 
@@ -33,16 +32,6 @@ async def es_client():
     )
     yield es_client
     await es_client.close()
-
-
-@pytest_asyncio.fixture(name="redis_client", scope="session")
-async def redis_client():
-    """Фикстура для единоразового создания клиента Elasticsearch"""
-    redis_client = Redis(
-        host=test_settings.redis_settings.host, port=test_settings.redis_settings.port
-    )
-    yield redis_client
-    await redis_client.aclose()
 
 
 @pytest_asyncio.fixture()

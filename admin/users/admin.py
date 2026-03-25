@@ -3,7 +3,7 @@
 from http import HTTPStatus
 
 from django.conf import settings
-from django.contrib import admin
+from django.contrib import admin, messages
 
 from clients.films_api.movie_theater_client import Client
 from clients.films_api.movie_theater_client.api.кинопроизведения.list_films_api_v1_films_get import (
@@ -21,6 +21,7 @@ from users.models import FilmListing, LoginHistory
 
 from .admin_site import admin_site
 from .auth_service import with_token_refresh
+from .film_api import delete_film_via_fastapi
 from .pagination import FilmAPIPaginator
 from .querysets import FilmListingQuerySet, LoginHistoryQuerySet
 
@@ -79,7 +80,64 @@ class FilmListingAdmin(admin.ModelAdmin):
         return False
 
     def has_delete_permission(self, request, obj=None):
-        return False
+        if not request.user.is_authenticated:
+            return False
+        return bool(
+            getattr(request.user, "is_admin", False) or request.user.is_superuser
+        )
+
+    def delete_model(self, request, obj):
+        resp = delete_film_via_fastapi(request, obj.uuid)
+        if resp is None:
+            messages.error(
+                request,
+                "Нет access token в сессии. Выйдите и войдите в админку снова.",
+            )
+            return
+        if resp.status_code == HTTPStatus.OK:
+            messages.success(
+                request,
+                f"Фильм «{obj.title}» удалён из каталога.",
+            )
+            return
+        if resp.status_code == HTTPStatus.NOT_FOUND:
+            messages.error(request, "Фильм не найден в базе каталога.")
+            return
+        if resp.status_code == HTTPStatus.FORBIDDEN:
+            messages.error(
+                request,
+                "Недостаточно прав (нужна роль admin в токене для FastAPI).",
+            )
+            return
+        messages.error(
+            request,
+            f"Не удалось удалить фильм (HTTP {resp.status_code}).",
+        )
+
+    def delete_queryset(self, request, queryset):
+        ok = 0
+        failed = 0
+        for obj in queryset:
+            resp = delete_film_via_fastapi(request, obj.uuid)
+            if resp is None:
+                failed += 1
+                continue
+            if resp.status_code == HTTPStatus.OK:
+                ok += 1
+            else:
+                failed += 1
+        if ok:
+            self.message_user(
+                request,
+                f"Удалено фильмов: {ok}.",
+                level=messages.SUCCESS,
+            )
+        if failed:
+            self.message_user(
+                request,
+                f"Не удалось удалить записей: {failed} (проверьте сессию и роль admin).",
+                level=messages.WARNING,
+            )
 
     def get_queryset(self, request):
         per_page = self.list_per_page

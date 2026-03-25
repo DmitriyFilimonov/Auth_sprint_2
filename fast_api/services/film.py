@@ -12,6 +12,7 @@ from db.redis import get_redis
 from .models import FilmListResult
 from models.film import Film
 from services.base import Service, GetMixin, SearchMixin, Cache, Database
+from services.film_visibility import ELASTIC_EXCLUDE_DELETED_MOVIES
 
 FILM_CACHE_EXPIRE_IN_SECONDS = 60 * 5  # 5 минут
 
@@ -41,6 +42,9 @@ class FilmService(SearchMixin, GetMixin, Service):
             # Сохраняем фильм в кеш
             await self._put_film_to_cache(film)
 
+        if film.is_deleted:
+            return None
+
         return film
 
     async def get(
@@ -52,10 +56,17 @@ class FilmService(SearchMixin, GetMixin, Service):
         """Возвращает список найденных фильмов"""
         query = {
             "query": {
-                "multi_match": {
-                    "query": query,
-                    "fields": ["title^3", "description"],
-                    "fuzziness": "AUTO",
+                "bool": {
+                    "must": [
+                        {
+                            "multi_match": {
+                                "query": query,
+                                "fields": ["title^3", "description"],
+                                "fuzziness": "AUTO",
+                            }
+                        }
+                    ],
+                    "must_not": [ELASTIC_EXCLUDE_DELETED_MOVIES],
                 }
             },
             "from": (page - 1) * size,
@@ -109,7 +120,12 @@ class FilmService(SearchMixin, GetMixin, Service):
         sort_order = "desc" if sort.startswith("-") else "asc"
         sort_field = sort.lstrip("-")
 
-        bool_query: dict = {"bool": {"must": []}}
+        bool_query: dict = {
+            "bool": {
+                "must": [],
+                "must_not": [ELASTIC_EXCLUDE_DELETED_MOVIES],
+            }
+        }
         if genre:
             bool_query["bool"]["must"].append(
                 {
@@ -166,7 +182,10 @@ class FilmService(SearchMixin, GetMixin, Service):
             doc = await self.database.get(index="movies", id=film_id)
         except NotFoundError:
             return None
-        return Film(**doc["_source"])
+        film = Film(**doc["_source"])
+        if film.is_deleted:
+            return None
+        return film
 
     async def _film_from_cache(self, film_id: str) -> Film | None:
         """Поиск фильма по ID в кэше"""
@@ -203,6 +222,35 @@ class FilmService(SearchMixin, GetMixin, Service):
             {"total": total, "items": [film.model_dump(mode="json") for film in films]}
         )
         await self.cache.set(cache_key, blob, FILM_CACHE_EXPIRE_IN_SECONDS)
+
+    async def mark_film_deleted_in_elasticsearch(self, film_id: str) -> None:
+        """Сразу после PG soft delete помечает документ в ES — до прихода ETL списки не тянут «живой» фильм в Redis."""
+        try:
+            await self.database.update(
+                index="movies",
+                id=film_id,
+                doc={"is_deleted": True},
+                refresh=True,
+            )
+        except NotFoundError:
+            pass
+        except BadRequestError:
+            pass
+
+    async def invalidate_caches_after_film_soft_delete(self, film_id: str) -> None:
+        """Сбрасывает кэши списков, фильмов и персон после soft delete."""
+        await self.cache.delete(f"film_{film_id}")
+        for pattern in ("films:*", "films_person_*", "person_*"):
+            async for key in self.cache.scan_iter(match=pattern):
+                await self.cache.delete(key)
+
+    async def after_film_soft_delete(self, film_id: str) -> None:
+        """
+        Агрегация актуализаци хранилищ.
+        Порядок: ES (с refresh), затем сброс Redis — иначе новый кэш снова заполняется устаревшим ES.
+        """
+        await self.mark_film_deleted_in_elasticsearch(film_id)
+        await self.invalidate_caches_after_film_soft_delete(film_id)
 
 
 @lru_cache()

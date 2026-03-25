@@ -30,30 +30,43 @@ def refresh_session_tokens(request) -> bool:
     return True
 
 
-def with_token_refresh(fn):
-    def wrapper(request):
-        client = AuthenticatedClient(
-            base_url=settings.AUTH_API_URL, token=request.session["access_token"]
-        )
-        response = fn(request, client)
+def with_token_refresh(fn=None, *, api_base_url=None, client_cls=None):
+    """
+    Вызывает fn(request, client) с Bearer из сессии; при 401 обновляет токены через auth API и повторяет.
 
-        if response.status_code != HTTPStatus.UNAUTHORIZED:
+    api_base_url: куда слать запросы (по умолчанию AUTH_API_URL).
+    client_cls: класс клиента из того же OpenAPI-пакета, что и вызываемый метод
+    (по умолчанию AuthenticatedClient из auth_api; для FastAPI — из movie_theater_client).
+    Обновление сессии по-прежнему только через refresh_session_tokens (auth API).
+    """
+
+    ClientCls = client_cls or AuthenticatedClient
+
+    def decorator(f):
+        def wrapper(request):
+            base = api_base_url if api_base_url is not None else settings.AUTH_API_URL
+            client = ClientCls(base_url=base, token=request.session["access_token"])
+            response = f(request, client)
+
+            if response.status_code != HTTPStatus.UNAUTHORIZED:
+                return response
+
+            refreshed = refresh_session_tokens(request)
+
+            if refreshed is True:
+                client = ClientCls(base_url=base, token=request.session["access_token"])
+
+                response = f(request, client)
+
+                return response
+
             return response
 
-        refreshed = refresh_session_tokens(request)
+        return wrapper
 
-        if refreshed is True:
-            client = AuthenticatedClient(
-                base_url=settings.AUTH_API_URL, token=request.session["access_token"]
-            )
-
-            response = fn(request, client)
-
-            return response
-
-        return response
-
-    return wrapper
+    if fn is not None:
+        return decorator(fn)
+    return decorator
 
 
 @with_token_refresh

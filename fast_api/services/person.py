@@ -10,6 +10,7 @@ from db.redis import get_redis
 from models.person import Person
 from models.film import FilmShort
 from services.base import Service, SearchMixin, Cache, Database
+from services.film_visibility import ELASTIC_EXCLUDE_DELETED_MOVIES
 
 PERSON_CACHE_EXPIRE_IN_SECONDS = 60 * 5  # 5 минут
 
@@ -108,26 +109,40 @@ class PersonService(SearchMixin, Service):
         query = {
             "query": {
                 "bool": {
-                    "should": [
+                    "must": [
                         {
-                            "nested": {
-                                "path": "actors",
-                                "query": {"term": {"actors.uuid": person_id}},
+                            "bool": {
+                                "should": [
+                                    {
+                                        "nested": {
+                                            "path": "actors",
+                                            "query": {
+                                                "term": {"actors.uuid": person_id}
+                                            },
+                                        }
+                                    },
+                                    {
+                                        "nested": {
+                                            "path": "writers",
+                                            "query": {
+                                                "term": {"writers.uuid": person_id}
+                                            },
+                                        }
+                                    },
+                                    {
+                                        "nested": {
+                                            "path": "directors",
+                                            "query": {
+                                                "term": {"directors.uuid": person_id}
+                                            },
+                                        }
+                                    },
+                                ],
+                                "minimum_should_match": 1,
                             }
-                        },
-                        {
-                            "nested": {
-                                "path": "writers",
-                                "query": {"term": {"writers.uuid": person_id}},
-                            }
-                        },
-                        {
-                            "nested": {
-                                "path": "directors",
-                                "query": {"term": {"directors.uuid": person_id}},
-                            }
-                        },
-                    ]
+                        }
+                    ],
+                    "must_not": [ELASTIC_EXCLUDE_DELETED_MOVIES],
                 }
             }
         }

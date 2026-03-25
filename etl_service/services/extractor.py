@@ -42,6 +42,7 @@ class PostgresQueries:
             fw.type,
             fw.created,
             fw.modified,
+            fw.is_deleted,
             COALESCE (
                 json_agg(
                     DISTINCT jsonb_build_object(

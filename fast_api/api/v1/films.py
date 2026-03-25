@@ -152,7 +152,7 @@ async def search_films(
             )
         )
 
-    return films
+    return result
 
 
 @router.delete("/{film_id}")
@@ -160,12 +160,15 @@ async def delete_film(
     film_id: str,
     user: dict = Depends(check_admin_role),
     session: AsyncSession = Depends(get_session),
+    film_service: FilmService = Depends(get_film_service),
 ):
     film_repo = FilmsRepository(session)
 
-    deleted = await film_repo.delete_single(film_id)
+    deleted = await film_repo.soft_delete(film_id)
 
     if not deleted:
         raise HTTPException(404, detail="Not found")
+
+    await film_service.after_film_soft_delete(film_id)
 
     return user

@@ -17,6 +17,7 @@ class BaseDocument(BaseModel):
 class Movie(BaseDocument):
     """Pydantic model for Movies."""
     title: str
+    is_deleted: bool = False
     description: str | None = Field(default=None)
     imdb_rating: float | None = Field(alias='rating', default=None)
     genres: list[dict] = Field(default=[])

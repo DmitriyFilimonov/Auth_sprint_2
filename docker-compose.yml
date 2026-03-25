@@ -54,6 +54,8 @@ services:
     volumes:
       - pg-data:/var/lib/postgresql/data
       - ./database_dump.sql:/docker-entrypoint-initdb.d/init.sql
+      # После init.sql (лексикографический порядок: z > init). Только при первом создании тома pg-data.
+      - ./database_migrations/001_film_work_is_deleted.sql:/docker-entrypoint-initdb.d/z_film_work_is_deleted.sql
     expose:
       - "${POSTGRES_PORT}"
     env_file:

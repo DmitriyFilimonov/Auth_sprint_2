@@ -90,6 +90,7 @@ class ElasticSchemas:
             "dynamic": "strict",
             "properties": {
                 "uuid": {"type": "keyword"},
+                "is_deleted": {"type": "boolean"},
                 "title": {
                     "type": "text",
                     "analyzer": "ru_en",

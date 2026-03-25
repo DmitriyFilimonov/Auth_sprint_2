@@ -18,17 +18,20 @@ async def authenticate_token(auth: HTTPAuthorizationCredentials = Security(secur
                     return await resp.json()
 
                 raise HTTPException(status_code=401, detail="Unauthorized")
+        except HTTPException:
+            raise
         except Exception:
             raise HTTPException(status_code=503, detail="Authorization service error")
 
 
-async def check_admin_role(user: dict = Depends(authenticate_token)):
-    print(user)
+ADMIN_ROLES = frozenset({"admin", "superuser"})
 
+
+async def check_admin_role(user: dict = Depends(authenticate_token)):
     if not user:
         return None
 
-    if user.get("role") != "admin":
+    if user.get("role") not in ADMIN_ROLES:
         raise HTTPException(status_code=403, detail="Только для админов")
 
     return user

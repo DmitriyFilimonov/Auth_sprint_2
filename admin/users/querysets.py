@@ -46,6 +46,19 @@ class LoginHistoryQuerySet(list):
             "Query", (), {"select_related": False, "order_by": (), "distinct": False}
         )
 
+    @property
+    def _meta(self):
+        """Для admin.utils.model_format_dict (Django 6+ и фейковые queryset’ы)."""
+        return self.model._meta
+
+    @property
+    def verbose_name(self):
+        return self.model._meta.verbose_name
+
+    @property
+    def verbose_name_plural(self):
+        return self.model._meta.verbose_name_plural
+
     def count(self):
         return len(self)
 
@@ -92,7 +105,17 @@ class FilmListingQuerySet(list):
         *,
         total: int,
         model: type[models.Model],
+        _prefetched_rows: list | None = None,
     ):
+        if _prefetched_rows is not None:
+            super().__init__(list(_prefetched_rows))
+            self._total = total
+            self.model = model
+            self.query = type(
+                "Query", (), {"select_related": False, "order_by": (), "distinct": False}
+            )
+            return
+
         rows = []
         for item in data:
             if not isinstance(item, FilmShortResponse):
@@ -112,11 +135,55 @@ class FilmListingQuerySet(list):
             "Query", (), {"select_related": False, "order_by": (), "distinct": False}
         )
 
+    @property
+    def _meta(self):
+        """Для admin.utils.model_format_dict (Django 6+ и фейковые queryset’ы)."""
+        return self.model._meta
+
+    @property
+    def verbose_name(self):
+        return self.model._meta.verbose_name
+
+    @property
+    def verbose_name_plural(self):
+        return self.model._meta.verbose_name_plural
+
     def count(self):
         return self._total
 
     def filter(self, *args, **kwargs):
-        return self
+        """Массовые действия админки делают .filter(pk__in=выбранные_id) — без этого удалялась вся страница."""
+        if args:
+            return self
+        if len(kwargs) != 1:
+            return self
+
+        pks = None
+        if "pk__in" in kwargs:
+            pks = kwargs["pk__in"]
+        elif "uuid__in" in kwargs:
+            pks = kwargs["uuid__in"]
+        elif "pk" in kwargs:
+            pks = [kwargs["pk"]]
+        elif "uuid" in kwargs:
+            pks = [kwargs["uuid"]]
+
+        if pks is None:
+            return self
+
+        if not pks:
+            return FilmListingQuerySet(
+                [], total=0, model=self.model, _prefetched_rows=[]
+            )
+
+        pks_set = {str(p) for p in pks}
+        filtered = [obj for obj in self if str(obj.pk) in pks_set]
+        return FilmListingQuerySet(
+            [],
+            total=len(filtered),
+            model=self.model,
+            _prefetched_rows=filtered,
+        )
 
     def order_by(self, *args, **kwargs):
         return self
@@ -134,4 +201,9 @@ class FilmListingQuerySet(list):
         return self
 
     def _clone(self):
-        return self
+        return FilmListingQuerySet(
+            [],
+            total=self._total,
+            model=self.model,
+            _prefetched_rows=list(self),
+        )
