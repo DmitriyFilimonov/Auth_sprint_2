@@ -42,7 +42,7 @@ class Settings(BaseSettings):
     debug: bool = False
     base_dir: Path = Path(__file__).resolve().parent.parent
     state_path: Path = base_dir / 'storage/state_storage.json'
-    main_loop_time: int = 15 * 60
+    main_loop_time: int = 1 * 60
     backoff_time: int = 3 * 60
     postgres_settings: PostgresSettings = PostgresSettings()
     elastic_settings: ElasticSettings = ElasticSettings()

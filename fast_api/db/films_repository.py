@@ -1,15 +1,20 @@
-from db.postgres import BaseRepository
-
 import uuid
-from sqlalchemy import delete
-from models.film import FilmDB
+
+from sqlalchemy import func, update
+
+from db.postgres import BaseRepository
+from db.sqlalchemy_models import FilmWork
 
 
 class FilmsRepository(BaseRepository):
-    async def delete_single(self, film_id: uuid.UUID) -> bool:
-        """Удаление фильма из Postgres."""
-        query = delete(FilmDB).where(FilmDB.id == film_id)
-        result = await self.session.execute(query)
+    async def soft_delete(self, film_id: str | uuid.UUID) -> bool:
+        uid = film_id if isinstance(film_id, uuid.UUID) else uuid.UUID(str(film_id))
+        stmt = (
+            update(FilmWork)
+            .where(FilmWork.id == uid, FilmWork.is_deleted.is_(False))
+            .values(is_deleted=True, modified=func.now())
+        )
+        result = await self.session.execute(stmt)
         await self.session.commit()
 
         return result.rowcount > 0

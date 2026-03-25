@@ -20,3 +20,20 @@ docker-compose -f docker-compose.test.yml up --build
 docker-compose build fastapi
 ```
 Далее запуск тестового контейнера.
+
+## Генерация Open API JSON сервиса
+- запустить нужный сервис
+- перейти в корень сервиса, которому нужен клиент
+- скачать JSON
+```
+curl http://localhost/{рутер сервиса}/openapi.json > openapi-auth.json
+```
+- здесь же установить openapi-python-client
+- выполнить
+```
+openapi-python-client generate \                            
+  --path openapi-auth.json \
+  --output-path clients/auth_api \
+--overwrite
+```
+- если выдаст ошибку "директория clients не найдена", создать её руками

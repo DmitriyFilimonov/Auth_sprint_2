@@ -1,41 +1,55 @@
+from .models import NotAuthorized
 from async_fastapi_jwt_auth import AuthJWT
-from fastapi import APIRouter, Depends, status, HTTPException, Request
+from fastapi import APIRouter, Depends, Query, status, HTTPException, Request
 import uuid
 from typing import Annotated
 
 from fastapi.encoders import jsonable_encoder
+from pydantic import BaseModel
 from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db.postgres import get_session
 from src.db.repository import UserRepository
-from src.schemas.entity import UserCreate, UserInDB, UserChangePassword, UserChangeLogin, LoginSchema, RoleCreate, RoleInDB, RoleUpdate
+from src.schemas.entity import (
+    UserCreate,
+    UserInDB,
+    UserChangePassword,
+    UserChangeLogin,
+    LoginSchema,
+    RoleCreate,
+    RoleInDB,
+    RoleUpdate,
+)
 from src.schemas.token import TokenResponse
 from src.services.auth import AuthService
 from src.models.entity import User, Role, UserRole
 
 
-router = APIRouter(prefix="/users")
+router = APIRouter(
+    prefix="/users",
+    responses={401: {"model": NotAuthorized}},
+)
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
 
 
-@router.post('/signup', response_model=UserInDB, status_code=status.HTTP_201_CREATED)
-async def create_user(user_create: UserCreate, session: AsyncSession = Depends(get_session)) -> UserInDB:
+@router.post("/signup", response_model=UserInDB, status_code=status.HTTP_201_CREATED)
+async def create_user(
+    user_create: UserCreate, session: AsyncSession = Depends(get_session)
+) -> UserInDB:
     """Регистрация пользователя."""
     user_repo = UserRepository(session)
 
     existing_user = await user_repo.get_user_by_login(user_create.login)
     if existing_user:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Login already registered"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Login already registered"
         )
 
     existing_email = await user_repo.get_user_by_email(user_create.email)
     if existing_email:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered"
         )
 
     user = await user_repo.create_user(
@@ -43,14 +57,19 @@ async def create_user(user_create: UserCreate, session: AsyncSession = Depends(g
         email=user_create.email,
         password=user_create.password,
         first_name=user_create.first_name,
-        last_name=user_create.last_name
+        last_name=user_create.last_name,
     )
 
     return user
 
 
 @router.post("/login", response_model=TokenResponse)
-async def login(payload: LoginSchema, request: Request, session: AsyncSession = Depends(get_session), Authorize: AuthJWT = Depends()):
+async def login(
+    payload: LoginSchema,
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+    Authorize: AuthJWT = Depends(),
+):
     """Аутентификация."""
     auth_service = AuthService(session, Authorize)
     tokens = await auth_service.login(request, payload.login, payload.password)
@@ -59,8 +78,7 @@ async def login(payload: LoginSchema, request: Request, session: AsyncSession = 
 
 @router.post("/refresh", response_model=TokenResponse)
 async def refresh_token(
-        session: AsyncSession = Depends(get_session),
-        Authorize: AuthJWT = Depends()
+    session: AsyncSession = Depends(get_session), Authorize: AuthJWT = Depends()
 ):
     """Обновление access токена"""
     auth_service = AuthService(session, Authorize)
@@ -68,7 +86,9 @@ async def refresh_token(
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
-async def logout(session: AsyncSession = Depends(get_session), Authorize: AuthJWT = Depends()):
+async def logout(
+    session: AsyncSession = Depends(get_session), Authorize: AuthJWT = Depends()
+):
     """Сброс токенов."""
     auth_service = AuthService(session, Authorize)
     await auth_service.logout()
@@ -78,7 +98,7 @@ async def logout(session: AsyncSession = Depends(get_session), Authorize: AuthJW
 async def change_login(
     payload: UserChangeLogin,
     Authorize: AuthJWT = Depends(),
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
 ):
     """Смена логина."""
     auth_service = AuthService(session, Authorize)
@@ -90,7 +110,7 @@ async def change_login(
 async def change_password(
     payload: UserChangePassword,
     Authorize: AuthJWT = Depends(),
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
 ):
     """Смена пароля."""
     auth_service = AuthService(session, Authorize)
@@ -98,20 +118,44 @@ async def change_password(
     return {"msg": "Password updated"}
 
 
-@router.get("/login-history")
+class HistoryResponseItem(BaseModel):
+    id: str
+    user_id: str
+    user_agent: str | None
+    created_at: str
+
+
+@router.get("/login-history", response_model=list[HistoryResponseItem])
 async def get_login_history(
-    limit: int = 50,
-    offset: int = 0,
+    limit: int = Query(50, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
     Authorize: AuthJWT = Depends(),
     session: AsyncSession = Depends(get_session),
 ):
+    await Authorize.jwt_required()
+
     """Получение пользователем своей истории входов в аккаунт."""
     auth_service = AuthService(session, Authorize)
-    return await auth_service.get_login_history(limit, offset)
+
+    history = await auth_service.get_login_history(limit, offset)
+
+    return [
+        HistoryResponseItem(
+            id=str(h.id),
+            user_id=str(h.user_id),
+            user_agent=h.user_agent,
+            created_at=str(h.created_at),
+        )
+        for h in history
+    ]
 
 
 @router.post("/roles", response_model=RoleInDB, status_code=status.HTTP_201_CREATED)
-async def set_roles(role_create: RoleCreate, db: SessionDep, Authorize: AuthJWT = Depends(),) -> RoleInDB:
+async def set_roles(
+    role_create: RoleCreate,
+    db: SessionDep,
+    Authorize: AuthJWT = Depends(),
+) -> RoleInDB:
     await Authorize.jwt_required()
 
     payload = await Authorize.get_raw_jwt()
@@ -138,7 +182,10 @@ async def set_roles(role_create: RoleCreate, db: SessionDep, Authorize: AuthJWT 
 
 
 @router.get("/roles", response_model=list[RoleInDB])
-async def get_roles(db: SessionDep, Authorize: AuthJWT = Depends(),) -> list[RoleInDB]:
+async def get_roles(
+    db: SessionDep,
+    Authorize: AuthJWT = Depends(),
+) -> list[RoleInDB]:
     await Authorize.jwt_required()
 
     payload = await Authorize.get_raw_jwt()
@@ -153,14 +200,23 @@ async def get_roles(db: SessionDep, Authorize: AuthJWT = Depends(),) -> list[Rol
     raise HTTPException(403)
 
 
-@router.patch("/roles/{user_id}", response_model=RoleInDB, status_code=status.HTTP_200_OK)
-async def update_roles(user_id: uuid.UUID, role_update: RoleUpdate, db: SessionDep, Authorize: AuthJWT = Depends(),) -> RoleInDB:
+@router.patch(
+    "/roles/{user_id}", response_model=RoleInDB, status_code=status.HTTP_200_OK
+)
+async def update_roles(
+    user_id: uuid.UUID,
+    role_update: RoleUpdate,
+    db: SessionDep,
+    Authorize: AuthJWT = Depends(),
+) -> RoleInDB:
     await Authorize.jwt_required()
 
     payload = await Authorize.get_raw_jwt()
 
     if payload.get("role") == UserRole.SUPERUSER:
-        user = (await db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
+        user = (
+            await db.execute(select(User).where(User.id == user_id))
+        ).scalar_one_or_none()
         if not user:
             raise HTTPException(404, "Пользователь не найден")
 
@@ -174,12 +230,16 @@ async def update_roles(user_id: uuid.UUID, role_update: RoleUpdate, db: SessionD
         await db.commit()
         await db.refresh(role)
         return role
-    
+
     raise HTTPException(403)
 
 
 @router.delete("/roles/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_roles(user_id: uuid.UUID, db: SessionDep, Authorize: AuthJWT = Depends(),):
+async def delete_roles(
+    user_id: uuid.UUID,
+    db: SessionDep,
+    Authorize: AuthJWT = Depends(),
+):
     await Authorize.jwt_required()
 
     payload = await Authorize.get_raw_jwt()
@@ -198,7 +258,7 @@ async def delete_roles(user_id: uuid.UUID, db: SessionDep, Authorize: AuthJWT = 
         await db.commit()
 
         return
-    
+
     raise HTTPException(403)
 
 
@@ -208,10 +268,7 @@ async def authenticate_token(Authorize: AuthJWT = Depends()):
 
     payload = await Authorize.get_raw_jwt()
 
-    return {
-        "user_id": payload.get("user_id"),
-        "role": payload.get("role")
-    }
+    return {"user_id": payload.get("user_id"), "role": payload.get("role")}
 
 
 @router.get("/ping")

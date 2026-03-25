@@ -1,4 +1,5 @@
 import json
+
 from functools import lru_cache
 from uuid import UUID
 
@@ -8,14 +9,17 @@ from redis.asyncio import Redis
 
 from db.elastic import get_elastic
 from db.redis import get_redis
+from .models import FilmListResult
 from models.film import Film
 from services.base import Service, GetMixin, SearchMixin, Cache, Database
+from services.film_visibility import ELASTIC_EXCLUDE_DELETED_MOVIES
 
 FILM_CACHE_EXPIRE_IN_SECONDS = 60 * 5  # 5 минут
 
 
 class FilmService(SearchMixin, GetMixin, Service):
     """Бизнес-логика по работе с фильмами."""
+
     def __init__(self, cache: Cache, database: Database):
         self.cache = cache
         self.database = database
@@ -38,50 +42,39 @@ class FilmService(SearchMixin, GetMixin, Service):
             # Сохраняем фильм в кеш
             await self._put_film_to_cache(film)
 
+        if film.is_deleted:
+            return None
+
         return film
 
     async def get(
-            self,
-            sort: str,
-            genre: UUID | None,
-            page: int,
-            size: int
-    ) -> list[Film] | None:
-        """
-        Возвращает список фильмов по заданным критериям.
-
-        :param sort: Сортировка по рейтингу IMDB
-        :param genre: Жанр
-        :param page: Номер страницы
-        :param size: Количество записей
-        :return: Список фильмов
-        """
+        self, sort: str, genre: UUID | None, page: int, size: int
+    ) -> FilmListResult:
         return await self._get_films_by_filters(sort, genre, page, size)
 
-    async def search(
-            self,
-            query: str,
-            page: int,
-            size: int
-    ) -> list[Film] | None:
+    async def search(self, query: str, page: int, size: int) -> list[Film] | None:
         """Возвращает список найденных фильмов"""
         query = {
             "query": {
-                "multi_match": {
-                    "query": query,
-                    "fields": ["title^3", "description"],
-                    "fuzziness": "AUTO"
+                "bool": {
+                    "must": [
+                        {
+                            "multi_match": {
+                                "query": query,
+                                "fields": ["title^3", "description"],
+                                "fuzziness": "AUTO",
+                            }
+                        }
+                    ],
+                    "must_not": [ELASTIC_EXCLUDE_DELETED_MOVIES],
                 }
             },
             "from": (page - 1) * size,
-            "size": size
+            "size": size,
         }
 
         try:
-            doc = await self.database.search(
-                index="movies",
-                body=query
-            )
+            doc = await self.database.search(index="movies", body=query)
         except BadRequestError:
             return None
         except NotFoundError:
@@ -94,80 +87,105 @@ class FilmService(SearchMixin, GetMixin, Service):
         sort: str = "-imdb_rating",
         genre: UUID | None = None,
         page: int = 1,
-        size: int = 50
-    ) -> list[Film] | None:
+        size: int = 50,
+    ) -> FilmListResult:
         """Поиск фильмов по критериям"""
-        # Проверяем кэш
         cache_key = await self._get_films_cache_key(sort, genre, page, size)
-        cached_films = await self._films_from_cache(cache_key)
-        if cached_films:
-            return cached_films
+        cached_films = await self.cache.get(cache_key)
+        if cached_films is not None:
+            try:
+                return self._film_list_from_cache_blob(cached_films)
+            except (KeyError, TypeError, ValueError, json.JSONDecodeError):
+                pass
 
         films = await self._get_films_from_database(sort, genre, page, size)
-        if not films:
-            return None
 
-        # Сохраняем в кэш
-        await self._put_films_to_cache(cache_key, films)
+        if films.total != 0:
+            await self._put_films_to_cache(
+                cache_key=cache_key,
+                films=films.items,
+                total=films.total,
+            )
 
         return films
 
     async def _get_films_from_database(
-            self,
-            sort: str,
-            genre: UUID | None,
-            page: int,
-            size: int
-    ) -> list[Film] | None:
+        self,
+        sort: str,
+        genre: UUID | None,
+        page: int,
+        size: int,
+    ) -> FilmListResult:
         """Получение фильмов из базы данных по заданным критериям"""
-        # Настройки сортировки
         sort_order = "desc" if sort.startswith("-") else "asc"
         sort_field = sort.lstrip("-")
 
-        # Базовый запрос
-        query = {
-            "query": {
-                "bool": {
-                    "must": []
-                }
-            },
-            "sort": [
-                {sort_field: {"order": sort_order}}
-            ],
-            "from": (page - 1) * size,
-            "size": size
+        bool_query: dict = {
+            "bool": {
+                "must": [],
+                "must_not": [ELASTIC_EXCLUDE_DELETED_MOVIES],
+            }
         }
-
-        # Фильтр по жанру
         if genre:
-            query["query"]["bool"]["must"].append({
-                "nested": {
-                    "path": "genres",
-                    "query": {
-                        "term": {"genres.uuid": str(genre)}
+            bool_query["bool"]["must"].append(
+                {
+                    "nested": {
+                        "path": "genres",
+                        "query": {"term": {"genres.uuid": str(genre)}},
                     }
                 }
-            })
+            )
+
+        try:
+            count_doc = await self.database.count(
+                index="movies",
+                body={"query": bool_query},
+            )
+        except BadRequestError:
+            return FilmListResult(items=[], total=0)
+        except NotFoundError:
+            return FilmListResult(items=[], total=0)
+
+        total_val = int(count_doc["count"])
+
+        if total_val == 0:
+            return FilmListResult(items=[], total=0)
+
+        start = (page - 1) * size
+
+        if start >= total_val:
+            return FilmListResult(items=[], total=total_val)
+
+        search_body = {
+            "query": bool_query,
+            "sort": [{sort_field: {"order": sort_order}}],
+            "from": start,
+            "size": size,
+        }
 
         try:
             doc = await self.database.search(
                 index="movies",
-                body=query
+                body=search_body,
             )
         except BadRequestError:
-            return None
+            return FilmListResult(items=[], total=total_val)
         except NotFoundError:
-            return None
+            return FilmListResult(items=[], total=total_val)
 
-        return [Film(**hit["_source"]) for hit in doc["hits"]["hits"]]
+        films = [Film(**hit["_source"]) for hit in doc["hits"]["hits"]]
+        return FilmListResult(items=films, total=total_val)
 
     async def _get_film_from_database(self, film_id: str) -> Film | None:
         """Получение фильма по ID из базы данных"""
         try:
-            doc = await self.database.get(index='movies', id=film_id)
+            doc = await self.database.get(index="movies", id=film_id)
         except NotFoundError:
             return None
-        return Film(**doc['_source'])
+        film = Film(**doc["_source"])
+        if film.is_deleted:
+            return None
+        return film
 
     async def _film_from_cache(self, film_id: str) -> Film | None:
         """Поиск фильма по ID в кэше"""
@@ -180,29 +198,65 @@ class FilmService(SearchMixin, GetMixin, Service):
 
     async def _put_film_to_cache(self, film: Film):
         """Сохранение фильма в кэш"""
-        await self.cache.set(f"film_{film.uuid}", film.json(), FILM_CACHE_EXPIRE_IN_SECONDS)
+        await self.cache.set(
+            f"film_{film.uuid}", film.json(), FILM_CACHE_EXPIRE_IN_SECONDS
+        )
 
-    async def _get_films_cache_key(self, sort: str, genre: UUID | None, page: int, size: int) -> str:
+    async def _get_films_cache_key(
+        self, sort: str, genre: UUID | None, page: int, size: int
+    ) -> str:
         """Генерация ключа кэша"""
         genre_part = f":genre_{genre}" if genre else ""
         return f"films:sort_{sort}{genre_part}:page_{page}:size_{size}"
 
-    async def _films_from_cache(self, cache_key: str) -> list[Film] | None:
-        """Получение фильмов из кэша"""
-        data = await self.cache.get(cache_key)
-        if not data:
-            return None
-        return [Film.parse_raw(item) for item in json.loads(data)]
+    def _film_list_from_cache_blob(self, raw: str) -> FilmListResult:
+        """Разбор JSON из Redis в FilmListResult."""
+        payload = json.loads(raw)
+        total = int(payload["total"])
+        items = [Film.model_validate(item) for item in payload["items"]]
+        return FilmListResult(items=items, total=total)
 
-    async def _put_films_to_cache(self, cache_key: str, films: list[Film]):
+    async def _put_films_to_cache(self, cache_key: str, films: list[Film], total: int):
         """Сохранение фильмов в кэш"""
-        await self.cache.set(cache_key, json.dumps([film.json() for film in films]), FILM_CACHE_EXPIRE_IN_SECONDS)
+        blob = json.dumps(
+            {"total": total, "items": [film.model_dump(mode="json") for film in films]}
+        )
+        await self.cache.set(cache_key, blob, FILM_CACHE_EXPIRE_IN_SECONDS)
+
+    async def mark_film_deleted_in_elasticsearch(self, film_id: str) -> None:
+        """Сразу после PG soft delete помечает документ в ES — до прихода ETL списки не тянут «живой» фильм в Redis."""
+        try:
+            await self.database.update(
+                index="movies",
+                id=film_id,
+                doc={"is_deleted": True},
+                refresh=True,
+            )
+        except NotFoundError:
+            pass
+        except BadRequestError:
+            pass
+
+    async def invalidate_caches_after_film_soft_delete(self, film_id: str) -> None:
+        """Сбрасывает кэши списков, фильмов и персон после soft delete."""
+        await self.cache.delete(f"film_{film_id}")
+        for pattern in ("films:*", "films_person_*", "person_*"):
+            async for key in self.cache.scan_iter(match=pattern):
+                await self.cache.delete(key)
+
+    async def after_film_soft_delete(self, film_id: str) -> None:
+        """
+        Агрегация актуализаци хранилищ.
+        Порядок: ES (с refresh), затем сброс Redis — иначе новый кэш снова заполняется устаревшим ES.
+        """
+        await self.mark_film_deleted_in_elasticsearch(film_id)
+        await self.invalidate_caches_after_film_soft_delete(film_id)
 
 
 @lru_cache()
 def get_film_service(
-        cache: Redis = Depends(get_redis),
-        database: AsyncElasticsearch = Depends(get_elastic),
+    cache: Redis = Depends(get_redis),
+    database: AsyncElasticsearch = Depends(get_elastic),
 ) -> FilmService:
     """Провайдер FilmService"""
     return FilmService(cache, database)
