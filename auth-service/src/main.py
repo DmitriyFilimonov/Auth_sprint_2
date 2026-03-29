@@ -19,7 +19,7 @@ from jwt.exceptions import ExpiredSignatureError
 from src.core.config import settings
 from src.db import redis_db as redis
 from src.db import postgres
-from src.routes import users
+from src.routes import users, oauth_yandex
 import src.auth.jwt  # НЕ УДАЛЯТЬ # noqa
 
 
@@ -77,6 +77,7 @@ app.add_middleware(
 app.openapi = custom_openapi
 
 app.include_router(users.router, tags=["Пользователи"])
+app.include_router(oauth_yandex.router)
 
 
 @app.exception_handler(RevokedTokenError)

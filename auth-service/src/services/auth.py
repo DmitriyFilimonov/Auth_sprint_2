@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.db.redis_db import store_refresh_token, revoke_refresh_token, revoke_access_token
 from src.db.repository import UserRepository, LoginHistoryRepository
 from src.core.security import verify_password
-from src.models.entity import UserRole
+from src.models.entity import User, UserRole
 from src.schemas.token import TokenResponse
 from src.core.logger import logger
 
@@ -63,21 +63,54 @@ class AuthService:
 
         # Store refresh token in Redis
         new_raw = await self.auth.get_raw_jwt(refresh_token)
+        
         await store_refresh_token(new_raw["jti"], str(user.get("id")), new_raw["exp"])
 
         # Create login history record
         user_agent = request.headers.get("user-agent")
         login_info = ""
+
         await self.history_repo.create_login_record(
-            user_id=user["id"],
-            user_agent=user_agent,
-            login_info=login_info
+            user_id=user["id"], user_agent=user_agent, login_info=login_info
         )
 
-        return TokenResponse(
-            access_token=access_token,
-            refresh_token=refresh_token
+        return TokenResponse(access_token=access_token, refresh_token=refresh_token)
+
+    async def issue_tokens_for_external_user(
+        self, request: Request, user: User, *, login_info: str = ""
+    ) -> TokenResponse:
+        """Выдаёт пару JWT после успешной OAuth-аутентификации (пользователь уже в БД)."""
+        role = user.roles[0].role.value if user.roles else UserRole.USER.value
+        access_token = await self.auth.create_access_token(
+            subject=user.login,
+            user_claims={
+                "user_id": str(user.id),
+                "role": role,
+                "email": user.email,
+            },
         )
+        refresh_token = await self.auth.create_refresh_token(
+            subject=user.login,
+            user_claims={
+                "user_id": str(user.id),
+                "role": role,
+                "email": user.email,
+            },
+        )
+
+        new_raw = await self.auth.get_raw_jwt(refresh_token)
+
+        await store_refresh_token(new_raw["jti"], str(user.id), new_raw["exp"])
+
+        user_agent = request.headers.get("user-agent")
+
+        await self.history_repo.create_login_record(
+            user_id=user.id,
+            user_agent=user_agent,
+            login_info=login_info or "yandex_oauth",
+        )
+
+        return TokenResponse(access_token=access_token, refresh_token=refresh_token)
 
     async def refresh_tokens(
             self,
