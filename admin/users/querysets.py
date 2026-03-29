@@ -116,18 +116,16 @@ class FilmListingQuerySet(list):
             )
             return
 
-        rows = []
-        for item in data:
-            if not isinstance(item, FilmShortResponse):
-                continue
-            rows.append(
-                model(
-                    uuid=item.uuid,
-                    title=item.title,
-                    imdb_rating=_film_imdb_rating(item),
-                    genres_display=_film_genres_display(item),
-                )
+        rows = [
+            model(
+                uuid=item.uuid,
+                title=item.title,
+                imdb_rating=_film_imdb_rating(item),
+                genres_display=_film_genres_display(item),
             )
+            for item in data
+            if isinstance(item, FilmShortResponse)
+        ]
         super().__init__(rows)
         self._total = total
         self.model = model

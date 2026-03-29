@@ -1,6 +1,7 @@
 from logging import config as logging_config
 from pathlib import Path
 
+from pydantic import Field
 from pydantic_settings import BaseSettings
 
 from core.logger import LOGGING
@@ -28,6 +29,8 @@ class Settings(BaseSettings):
     auth_service_host: str
     auth_service_port: int
     auth_service_authenticate_token_endpoint: str
+    auth_service_request_timeout_seconds: float = Field(default=5.0, ge=0.5)
+    auth_service_max_retries: int = Field(default=3, ge=1)
 
     postgres_async_driver: str
 

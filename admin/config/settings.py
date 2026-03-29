@@ -10,9 +10,9 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
-import os
 from pathlib import Path
 
+from config.env_settings import env
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -81,11 +81,11 @@ WSGI_APPLICATION = "config.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("POSTGRES_DB"),
-        "USER": os.getenv("POSTGRES_USER"),
-        "PASSWORD": os.getenv("POSTGRES_PASSWORD"),
-        "HOST": os.getenv("POSTGRES_HOST"),
-        "PORT": os.getenv("POSTGRES_PORT"),
+        "NAME": env.postgres_db,
+        "USER": env.postgres_user,
+        "PASSWORD": env.postgres_password,
+        "HOST": env.postgres_host,
+        "PORT": env.postgres_port,
     }
 }
 
@@ -95,18 +95,10 @@ AUTHENTICATION_BACKENDS = [
     "users.auth.CustomBackend",
 ]
 
-service = os.getenv("AUTH_SERVICE")
-port = os.getenv("AUTH_PORT")
-endpoint = os.getenv("AUTH_LOGIN_EDNPOINT")
-
-AUTH_API_URL = f"http://{service}:{port}"
-AUTH_API_LOGIN_URL = f"{AUTH_API_URL}/{endpoint}"
-
-ALGORITHM = os.getenv("ALGORITHM")
-
-fastapi_service = os.getenv("FASTAPI_SERVICE", "fastapi")
-fastapi_port = os.getenv("FASTAPI_PORT", "8000")
-FASTAPI_URL = f"http://{fastapi_service}:{fastapi_port}"
+AUTH_API_URL = env.auth_api_url
+AUTH_API_LOGIN_URL = env.auth_api_login_url
+ALGORITHM = env.algorithm
+FASTAPI_URL = env.fastapi_url
 
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators

@@ -1,6 +1,8 @@
 # users/admin.py
 
+import logging
 from http import HTTPStatus
+
 
 from django.conf import settings
 from django.contrib import admin, messages
@@ -24,6 +26,8 @@ from .auth_service import with_token_refresh
 from .film_api import delete_film_via_fastapi
 from .pagination import FilmAPIPaginator
 from .querysets import FilmListingQuerySet, LoginHistoryQuerySet
+
+logger = logging.getLogger(__name__)
 
 
 @with_token_refresh
@@ -58,7 +62,11 @@ class LoginHistoryAdmin(admin.ModelAdmin):
             if response.status_code == 200 and response.parsed is not None:
                 return LoginHistoryQuerySet(response.parsed, model=LoginHistory)
         except Exception as e:
-            print(f"login history get_query_set error: {e}", flush=True)
+            logger.error(
+                "Login history: запрос к AUTH_API_URL (%s) не выполнен: %s. ",
+                settings.AUTH_API_URL,
+                e,
+            )
 
         return LoginHistoryQuerySet([], model=LoginHistory)
 
@@ -121,8 +129,7 @@ class FilmListingAdmin(admin.ModelAdmin):
             resp = delete_film_via_fastapi(request, obj.uuid)
             if resp is None:
                 failed += 1
-                continue
-            if resp.status_code == HTTPStatus.OK:
+            elif resp.status_code == HTTPStatus.OK:
                 ok += 1
             else:
                 failed += 1

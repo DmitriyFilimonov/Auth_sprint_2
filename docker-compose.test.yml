@@ -71,7 +71,7 @@ services:
       - ./.env.test
     depends_on:
       - theatre-db
-      - authapi
+      - auth-circuit-breaker
 
   authapi:
     build:
@@ -91,6 +91,23 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+
+  auth-circuit-breaker:
+    build:
+      context: ./auth-circuit-breaker
+      dockerfile: Dockerfile
+    image: auth-circuit-breaker-image
+    expose:
+      - "8000"
+    environment:
+      UPSTREAM_AUTH_BASE_URL: http://authapi:8000
+    depends_on:
+      - authapi
+    healthcheck:
+      test: [ "CMD", "python3", "-c", "from urllib.request import urlopen; urlopen('http://127.0.0.1:8000/health')" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
   auth-db:
     image: postgres:17.4
