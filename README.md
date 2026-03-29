@@ -37,3 +37,8 @@ openapi-python-client generate \
 --overwrite
 ```
 - если выдаст ошибку "директория clients не найдена", создать её руками
+
+## Яндекс OAuth
+
+- запустить сервисы
+- Зайти на в браузере на http://localhost/users/oauth/yandex/start
