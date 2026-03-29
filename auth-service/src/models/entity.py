@@ -15,7 +15,7 @@ class User(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     login: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
     email: Mapped[str | None] = mapped_column(String(255), unique=True)
-    password: Mapped[str] = mapped_column(String(255), nullable=False)
+    password: Mapped[str | None] = mapped_column(String(255), nullable=True)
     first_name: Mapped[str | None] = mapped_column(String(50))
     last_name: Mapped[str | None] = mapped_column(String(50))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
@@ -40,7 +40,7 @@ class UserRole(str, enum.Enum):
 
 
 class OAuthIdentity(Base):
-    """Привязка внешнего аккаунта к пользователю"""
+    """связывание внешнего аккаунта с пользователем auth-сервиса"""
 
     __tablename__ = "oauth_identities"
     __table_args__ = (
