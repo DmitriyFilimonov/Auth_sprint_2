@@ -27,6 +27,14 @@ class Settings(BaseSettings):
     postgres_db: str = 'auth'
     superuser_password: str
 
+    YANDEX_CLIENT_ID: str
+    YANDEX_CLIENT_SECRET: str
+    YANDEX_REDIRECT_URI: str
+    YANDEX_OAUTH_AUTH_ENDPOINT: str
+    YANDEX_OAUTH_TOKEN_ENDPOINT: str = "https://oauth.yandex.ru/token"
+    YANDEX_OAUTH_USERINFO_ENDPOINT: str = "https://login.yandex.ru/info"
+    YANDEX_OAUTH_SCOPE: str = "login:email login:info"
+
     sync_driver: str = 'postgresql+psycopg'
     async_driver: str = 'postgresql+asyncpg'
 

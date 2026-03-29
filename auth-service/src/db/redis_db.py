@@ -41,3 +41,18 @@ async def revoke_all_refresh_tokens(user_id: str):
         uuid = await redis.get(key)
         if uuid == user_id:
             await redis.delete(key)
+
+
+_OAUTH_STATE_PREFIX = "oauth:yandex:state:"
+
+
+async def store_yandex_oauth_state_in_redis(state: str, ttl_seconds: int = 600) -> None:
+    """Одноразовый state для CSRF при редиректе на Яндекс."""
+    await redis.setex(f"{_OAUTH_STATE_PREFIX}{state}", ttl_seconds, "1")
+
+
+async def consume_yandex_oauth_state(state: str) -> bool:
+    """Удаляет state и возвращает True, если он существовал (валидный первый заход)."""
+    deleted = await redis.delete(f"{_OAUTH_STATE_PREFIX}{state}")
+
+    return bool(deleted)

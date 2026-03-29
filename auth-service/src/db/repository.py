@@ -4,7 +4,7 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.models.entity import User, History, UserRole, Role
+from src.models.entity import User, History, UserRole, Role, OAuthIdentity
 from src.core.security import get_password_hash, verify_password
 
 
@@ -32,6 +32,66 @@ class UserRepository:
             select(User).where(User.email == email)
         )
         return result.scalar_one_or_none()
+
+    async def get_user_by_oauth(
+        self, provider: str, provider_user_id: str
+    ) -> User | None:
+        """Пользователь по связке провайдер + id из провайдера oauth."""
+        result = await self.session.execute(
+            select(User)
+            .join(OAuthIdentity, User.id == OAuthIdentity.user_id)
+            .where(
+                OAuthIdentity.provider == provider,
+                OAuthIdentity.provider_user_id == provider_user_id,
+            )
+            .options(selectinload(User.roles))
+        )
+
+        return result.scalar_one_or_none()
+
+    async def create_external_user_with_oauth_identity(
+        self,
+        *,
+        login: str,
+        email: str | None,
+        first_name: str | None,
+        last_name: str | None,
+        provider: str,
+        provider_user_id: str,
+        role: UserRole = UserRole.USER,
+    ) -> User:
+        """Новый пользователь без пароля и строка в oauth_identities."""
+        user = User(
+            login=login,
+            email=email,
+            password=None,
+            first_name=first_name,
+            last_name=last_name,
+        )
+
+        self.session.add(user)
+
+        await self.session.flush()
+
+        self.session.add(Role(user_id=user.id, role=role))
+
+        self.session.add(
+            OAuthIdentity(
+                user_id=user.id,
+                provider=provider,
+                provider_user_id=provider_user_id,
+            )
+        )
+
+        await self.session.commit()
+
+        result = await self.session.execute(
+            select(User)
+            .where(User.id == user.id)
+            .options(selectinload(User.roles))
+        )
+
+        return result.scalar_one()
 
     async def create_user(
         self,
