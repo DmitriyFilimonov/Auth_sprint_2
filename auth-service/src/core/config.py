@@ -27,6 +27,10 @@ class Settings(BaseSettings):
     postgres_db: str = 'auth'
     superuser_password: str
 
+    YANDEX_CLIENT_ID: str
+    YANDEX_CLIENT_SECRET: str
+    YANDEX_REDIRECT_URI: str
+
     sync_driver: str = 'postgresql+psycopg'
     async_driver: str = 'postgresql+asyncpg'
 

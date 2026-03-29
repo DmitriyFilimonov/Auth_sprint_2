@@ -2,7 +2,7 @@ import uuid
 import enum
 from datetime import datetime, timezone
 
-from sqlalchemy import String, ForeignKey, DateTime, Enum as SQLEnum
+from sqlalchemy import String, ForeignKey, DateTime, Enum as SQLEnum, UniqueConstraint
 from sqlalchemy.orm import relationship, mapped_column, Mapped
 from sqlalchemy.dialects.postgresql import UUID
 
@@ -22,6 +22,11 @@ class User(Base):
 
     roles: Mapped[list["Role"]] = relationship(back_populates="users", passive_deletes=True, cascade="all, delete-orphan")
     history: Mapped[list["History"]] = relationship(back_populates="users", passive_deletes=True, cascade="all, delete-orphan")
+    oauth_identities: Mapped[list["OAuthIdentity"]] = relationship(
+        back_populates="user",
+        passive_deletes=True,
+        cascade="all, delete-orphan",
+    )
 
     def __repr__(self) -> str:
         return f'<User {self.login}>'
@@ -32,6 +37,41 @@ class UserRole(str, enum.Enum):
     SUBSCRIBER = "subscriber"  # Подписчик (платный)
     ADMIN = "admin"  # Администратор
     SUPERUSER = "superuser"  # Суперпользователь (полный доступ)
+
+
+class OAuthIdentity(Base):
+    """Привязка внешнего аккаунта к пользователю"""
+
+    __tablename__ = "oauth_identities"
+    __table_args__ = (
+        UniqueConstraint(
+            "provider",
+            "provider_user_id",
+            name="uq_oauth_identities_provider_subject",
+        ),
+        UniqueConstraint(
+            "user_id",
+            "provider",
+            name="uq_oauth_identities_user_provider",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    provider: Mapped[str] = mapped_column(String(32), nullable=False)
+    provider_user_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+
+    user: Mapped["User"] = relationship(back_populates="oauth_identities")
+
+    def __repr__(self) -> str:
+        return f"<OAuthIdentity {self.provider}:{self.provider_user_id}>"
 
 
 class Role(Base):
