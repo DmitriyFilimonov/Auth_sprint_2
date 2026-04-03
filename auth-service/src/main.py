@@ -16,12 +16,18 @@ from redis.asyncio import Redis
 from starlette.responses import JSONResponse
 from jwt.exceptions import ExpiredSignatureError
 
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+
 from src.core.config import settings
+from src.core.tracing import RequestIdMiddleware, flush_traces, setup_tracing
 from src.db import redis_db as redis
 from src.db import postgres
 from src.services.middleware import RateLimitMiddleware
 import src.auth.jwt  # НЕ УДАЛЯТЬ # noqa\
 from src.routes import users, oauth_yandex
+
+
+_tracing_enabled = setup_tracing()
 
 
 @asynccontextmanager
@@ -31,6 +37,7 @@ async def lifespan(app: FastAPI):
 
     yield
 
+    flush_traces()
     # Отключаемся от баз при завершении работы
     await redis.redis.close()
     await postgres.engine.dispose()
@@ -76,11 +83,15 @@ app.add_middleware(
 )
 
 app.add_middleware(RateLimitMiddleware)
+app.add_middleware(RequestIdMiddleware)
 
 app.openapi = custom_openapi
 
 app.include_router(users.router, tags=["Пользователи"])
 app.include_router(oauth_yandex.router)
+
+if _tracing_enabled:
+    FastAPIInstrumentor.instrument_app(app)
 
 
 @app.exception_handler(RevokedTokenError)
