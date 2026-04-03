@@ -2,8 +2,8 @@ version: '3.8'
 services:
   fastapi:
     build:
-      context: ./fast_api
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: fast_api/Dockerfile
     image: fastapi-image
     ports:
       - "8000:8000"
@@ -75,8 +75,8 @@ services:
 
   authapi:
     build:
-      context: ./auth-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: auth-service/Dockerfile
     expose:
       - "8000"
     ports: 
