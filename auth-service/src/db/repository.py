@@ -103,7 +103,7 @@ class UserRepository:
         role: UserRole = UserRole.USER
     ) -> User:
         """Create new user"""
-        hashed_password = get_password_hash(password)
+        hashed_password = await get_password_hash(password)
         user = User(
             login=login,
             email=email,
@@ -126,7 +126,7 @@ class UserRepository:
 
     async def update_user_password(self, user_id: uuid.UUID, new_password: str) -> bool:
         """Update user password"""
-        hashed_password = get_password_hash(new_password)
+        hashed_password = await get_password_hash(new_password)
         result = await self.session.execute(
             update(User)
             .where(User.id == user_id)
