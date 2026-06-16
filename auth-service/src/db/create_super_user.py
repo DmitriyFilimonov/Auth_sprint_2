@@ -11,7 +11,7 @@ from src.core.config import settings
 
 async def create_super_user():
     async with async_session() as session:
-        hashed_password = get_password_hash(settings.superuser_password)
+        hashed_password = await get_password_hash(settings.superuser_password)
 
         user = User(
             login="admin",

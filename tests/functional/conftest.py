@@ -223,7 +223,7 @@ async def create_super_user():
             user_id = uuid.uuid4()
             login = "admin_test"
             print(test_settings.auth_db_setting.superuser_password)
-            hashed_password = get_password_hash(
+            hashed_password = await get_password_hash(
                 test_settings.auth_db_setting.superuser_password
             )
 
