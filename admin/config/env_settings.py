@@ -17,6 +17,7 @@ class AdminEnvSettings(BaseSettings):
     auth_port: str = Field(validation_alias="AUTH_PORT")
     auth_login_endpoint: str = Field(validation_alias="AUTH_LOGIN_EDNPOINT")
 
+    secret_key: str = Field(validation_alias="SECRET_KEY")
     algorithm: str = Field(validation_alias="ALGORITHM")
 
     fastapi_service: str = Field(default="fastapi", validation_alias="FASTAPI_SERVICE")

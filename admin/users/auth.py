@@ -1,4 +1,4 @@
-from jwt import decode
+from jwt import InvalidTokenError, decode
 import http
 from enum import StrEnum, auto
 
@@ -30,9 +30,14 @@ class CustomBackend(BaseBackend):
         request.session["access_token"] = access_token
         request.session["refresh_token"] = refresh_token
 
-        decoded = decode(jwt=access_token, options={"verify_signature": False})
-
-        print(decoded)
+        try:
+            decoded = decode(
+                jwt=access_token,
+                key=settings.SECRET_KEY,
+                algorithms=[settings.ALGORITHM],
+            )
+        except InvalidTokenError:
+            return None
 
         try:
             user, _created = User.objects.get_or_create(

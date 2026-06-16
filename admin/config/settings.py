@@ -25,12 +25,16 @@ STATIC_ROOT = BASE_DIR / "static"
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-d@+(lk$-9yp^999#v**(cg%01$cy80q$+e@25744!^_c*)6ru7"
+SECRET_KEY = env.secret_key
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
+
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:8080",
+]
 
 
 # Application definition
