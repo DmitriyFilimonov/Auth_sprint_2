@@ -24,7 +24,7 @@ from src.db import redis_db as redis
 from src.db import postgres
 from src.services.middleware import RateLimitMiddleware
 import src.auth.jwt  # НЕ УДАЛЯТЬ # noqa\
-from src.routes import users, oauth_yandex
+from src.routes import users, oauth
 
 
 _tracing_enabled = setup_tracing()
@@ -88,7 +88,7 @@ app.add_middleware(RequestIdMiddleware)
 app.openapi = custom_openapi
 
 app.include_router(users.router, tags=["Пользователи"])
-app.include_router(oauth_yandex.router)
+app.include_router(oauth.router)
 
 if _tracing_enabled:
     FastAPIInstrumentor.instrument_app(app)

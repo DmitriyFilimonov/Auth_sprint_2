@@ -43,16 +43,30 @@ async def revoke_all_refresh_tokens(user_id: str):
             await redis.delete(key)
 
 
-_OAUTH_STATE_PREFIX = "oauth:yandex:state:"
+_OAUTH_STATE_PREFIX = "oauth:state:"
+
+
+def _oauth_state_key(provider: str, state: str) -> str:
+    return f"{_OAUTH_STATE_PREFIX}{provider}:{state}"
+
+
+async def store_oauth_state(provider: str, state: str, ttl_seconds: int = 600) -> None:
+    """State for CSRF redirect to a provider."""
+    await redis.setex(_oauth_state_key(provider, state), ttl_seconds, "1")
+
+
+async def consume_oauth_state(provider: str, state: str) -> bool:
+    """Delete state and return True if it existed."""
+    deleted = await redis.delete(_oauth_state_key(provider, state))
+    return bool(deleted)
+
+
+# Legacy Yandex-specific wrappers -- kept for backward compatibility.
 
 
 async def store_yandex_oauth_state_in_redis(state: str, ttl_seconds: int = 600) -> None:
-    """Одноразовый state для CSRF при редиректе на Яндекс."""
-    await redis.setex(f"{_OAUTH_STATE_PREFIX}{state}", ttl_seconds, "1")
+    await store_oauth_state("yandex", state, ttl_seconds)
 
 
 async def consume_yandex_oauth_state(state: str) -> bool:
-    """Удаляет state и возвращает True, если он существовал (валидный первый заход)."""
-    deleted = await redis.delete(f"{_OAUTH_STATE_PREFIX}{state}")
-
-    return bool(deleted)
+    return await consume_oauth_state("yandex", state)
