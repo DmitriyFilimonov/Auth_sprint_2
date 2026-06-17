@@ -53,6 +53,7 @@ async def proxy_handler(request: web.Request) -> web.StreamResponse:
             headers=req_headers,
             data=body if body else None,
             timeout=timeout,
+            allow_redirects=False,
         ) as resp:
             data = await resp.read()
             resp_headers = filter_response_headers(resp.headers)
